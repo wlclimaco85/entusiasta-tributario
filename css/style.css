@@ -229,6 +229,51 @@ button { cursor: pointer; font-family: inherit; }
 .card-mini-meta { font-size: 0.72rem; color: var(--cinza-texto); margin-top: 4px; }
 
 /* ── Seção principal ── */
+.section { padding: 48px 0; background: #ffffff; }
+.section .container { color: #1a1a1a; }
+.section .section-title { color: #1a1a1a; }
+.section .section-title::before { background: var(--laranja); }
+.section .ver-mais { color: var(--laranja); }
+
+/* Cards no fundo branco */
+.section .card {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.section .card:hover {
+  border-color: var(--laranja);
+  box-shadow: 0 8px 24px rgba(224,123,0,0.12);
+}
+.section .card-body p { color: #555; }
+.section .card-footer { color: #888; border-top-color: #e5e5e5; }
+.section .card-img { background: #f0f0f0; }
+
+/* Filtro de categorias no fundo branco */
+.categorias-bar-wrap { background: #f8f8f8; border-bottom: 1px solid #e5e5e5; padding: 16px 0; }
+.section .cat-btn { border-color: #ddd; color: #555; background: #fff; }
+.section .cat-btn:hover, .section .cat-btn.active {
+  background: var(--laranja); border-color: var(--laranja); color: #fff;
+}
+.section .pag-btn { border-color: #ddd; color: #555; background: #fff; }
+.section .pag-btn:hover, .section .pag-btn.active {
+  background: var(--laranja); border-color: var(--laranja); color: #fff;
+}
+
+/* Sidebar de cotações no fundo branco */
+#sidebar-cotacoes .cot-widget {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+#sidebar-cotacoes .cot-widget-title {
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--laranja);
+  margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;
+}
+
 .section { padding: 48px 0; }
 .section-header {
   display: flex;

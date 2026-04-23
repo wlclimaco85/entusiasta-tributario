@@ -413,6 +413,7 @@
             <option value="Simples Nacional">
             <option value="Contabilidade">
             <option value="Trabalhista">
+            <option value="Estadual">
           </datalist>
         </div>
       </div>
@@ -421,11 +422,11 @@
         <div class="form-group">
           <label class="form-label">Menus onde aparece</label>
           <input type="text" id="f-menus" class="form-control" placeholder="home,tributario,mei (separados por vírgula)">
-          <small style="color:var(--cinza-texto);font-size:0.72rem">Opções: home, tributario, mei, empresarial, reforma</small>
+          <small style="color:var(--cinza-texto);font-size:0.72rem">Opções: home, tributario, mei, empresarial, reforma, estadual</small>
         </div>
         <div class="form-group">
-          <label class="form-label">Autor</label>
-          <input type="text" id="f-autor" class="form-control" value="Entusiasta Tributário">
+          <label class="form-label">Estadual (UF ou estado)</label>
+          <input type="text" id="f-estadual" class="form-control" placeholder="Ex: SP, RJ, MG (opcional)">
         </div>
       </div>
 
@@ -491,8 +492,19 @@
 
       <div class="form-row">
         <div class="form-group">
+          <label class="form-label">Autor</label>
+          <input type="text" id="f-autor" class="form-control" value="Entusiasta Tributário">
+        </div>
+        <div class="form-group">
           <label class="form-label">Fonte</label>
           <input type="text" id="f-fonte" class="form-control" placeholder="Nome da fonte">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tags (separadas por vírgula)</label>
+          <input type="text" id="f-tags" class="form-control" placeholder="reforma tributária, MEI, imposto">
         </div>
         <div class="form-group">
           <label class="form-label">Ordem de Exibição</label>
@@ -502,19 +514,16 @@
 
       <div style="display:flex;gap:24px;margin-bottom:24px">
         <label class="form-check">
-          <input type="checkbox" id="f-publicado">
-          <span>Publicar imediatamente</span>
-        </label>
-        <label class="form-check">
           <input type="checkbox" id="f-destaque">
           <span>Artigo em destaque</span>
         </label>
       </div>
 
-      <div style="display:flex;gap:12px;justify-content:flex-end">
+      <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
         <button type="button" class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
         <button type="button" class="btn btn-ghost" id="btn-preview-site" style="display:none" onclick="abrirPreview()">🌐 Ver no site</button>
-        <button type="submit" class="btn btn-primary" id="btn-salvar">💾 Salvar Artigo</button>
+        <button type="button" class="btn btn-ghost" id="btn-rascunho" onclick="salvarRascunho()">📝 Salvar Rascunho</button>
+        <button type="submit" class="btn btn-primary" id="btn-salvar">🚀 Publicar Artigo</button>
       </div>
     </form>
   </div>

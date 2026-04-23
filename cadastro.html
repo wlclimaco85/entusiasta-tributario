@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar Conta — Entusiasta Tributário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">$</div>
+      <h1>entusiasta <span>tributário</span></h1>
+      <p style="font-size:0.85rem;color:var(--cinza-texto);margin-top:6px">Criar nova conta</p>
+    </div>
+
+    <div class="login-error" id="cadastro-error"></div>
+    <div id="cadastro-success" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:10px 14px;border-radius:var(--radius);font-size:0.85rem;margin-bottom:16px"></div>
+
+    <form id="cadastro-form">
+      <div class="form-group">
+        <label class="form-label" for="nome">Nome completo</label>
+        <input type="text" id="nome" class="form-control" placeholder="Seu nome" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="email">E-mail</label>
+        <input type="email" id="email" class="form-control" placeholder="seu@email.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="senha">Senha</label>
+        <input type="password" id="senha" class="form-control" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="confirmar">Confirmar senha</label>
+        <input type="password" id="confirmar" class="form-control" placeholder="Repita a senha" required autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" id="btn-submit">
+        Criar conta
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px">
+      <a href="login.html" style="font-size:0.85rem;color:var(--cinza-texto)">Já tenho conta → Entrar</a>
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <a href="index.html" style="font-size:0.85rem;color:var(--cinza-texto)">← Voltar para o site</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  if (Auth.isLoggedIn()) window.location.href = 'admin.html';
+
+  document.getElementById('cadastro-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit');
+    const errEl = document.getElementById('cadastro-error');
+    const okEl  = document.getElementById('cadastro-success');
+    errEl.style.display = 'none';
+    okEl.style.display  = 'none';
+    btn.textContent = 'Criando conta...';
+    btn.disabled = true;
+
+    const nome     = document.getElementById('nome').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const senha    = document.getElementById('senha').value;
+    const confirmar = document.getElementById('confirmar').value;
+
+    if (senha !== confirmar) {
+      errEl.textContent = 'As senhas não coincidem.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Criar conta';
+      btn.disabled = false;
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/rest/auth/cadastrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senha }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 409) {
+        errEl.textContent = 'Este e-mail já está cadastrado.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!res.ok) {
+        errEl.textContent = data?.message || data || 'Erro ao criar conta.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Login automático após cadastro
+      const token = data?.access_token;
+      if (token) {
+        Auth.setToken(token);
+        Auth.setUser(data?.login || { email, nome });
+      }
+
+      okEl.textContent = '✅ Conta criada com sucesso! Redirecionando...';
+      okEl.style.display = 'block';
+      setTimeout(() => window.location.href = 'admin.html', 1500);
+
+    } catch (err) {
+      errEl.textContent = 'Erro de conexão: ' + err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.textContent = 'Criar conta';
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

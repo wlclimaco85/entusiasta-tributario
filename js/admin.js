@@ -568,8 +568,7 @@ function limparForm() {
   document.getElementById('preview-area').style.display = 'none';
   document.getElementById('f-conteudo').style.display = 'block';
   // Limpa imagem
-  limparPreview();
-}
+  limparPreview();}
 
 function preencherForm(a) {
   document.getElementById('artigo-id').value = a.id;
@@ -585,7 +584,6 @@ function preencherForm(a) {
   document.getElementById('f-imagem').value = a.imagemCapa || '';
   // Limpa fileId anterior
   delete document.getElementById('f-imagem').dataset.fileId;
-
   // Mostra preview — prioridade: fileAttachment > imagemCapa > imagemUrl
   const imgSrc = a.imagemUrl || a.imagemCapa ||
     (a.fileAttachment?.id ? `${API_BASE}/api/files/download/${a.fileAttachment.id}` : null);
@@ -596,7 +594,6 @@ function preencherForm(a) {
   }
   document.getElementById('f-ordem').value = a.ordemExibicao ?? 0;
   document.getElementById('f-fonte').value = a.fonte || '';
-  document.getElementById('f-publicado').checked = a.publicado;
   document.getElementById('f-destaque').checked = a.destaque;
   slugAtual = a.slug;
   document.getElementById('btn-preview-site').style.display = a.slug ? 'inline-flex' : 'none';
@@ -612,12 +609,31 @@ function gerarSlugAuto() {
 async function salvarArtigo(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-salvar');
+  btn.textContent = 'Publicando...';
+  btn.disabled = true;
+
+  await _salvarArtigoComStatus(true);
+
+  btn.textContent = '🚀 Publicar Artigo';
+  btn.disabled = false;
+}
+
+/** Salva como rascunho (publicado=false) */
+async function salvarRascunho() {
+  const btn = document.getElementById('btn-rascunho');
   btn.textContent = 'Salvando...';
   btn.disabled = true;
 
+  await _salvarArtigoComStatus(false);
+
+  btn.textContent = '📝 Salvar Rascunho';
+  btn.disabled = false;
+}
+
+/** Lógica interna de salvar artigo */
+async function _salvarArtigoComStatus(publicado) {
   const id = document.getElementById('artigo-id').value;
   const imagemCapaRaw = document.getElementById('f-imagem').value;
-  // Nunca envia base64 para o backend
   const imagemCapa = imagemCapaRaw && !imagemCapaRaw.startsWith('data:')
     ? imagemCapaRaw
     : '';
@@ -633,22 +649,21 @@ async function salvarArtigo(e) {
     autor:            document.getElementById('f-autor').value,
     tags:             document.getElementById('f-tags').value,
     imagemCapa,
-    // Envia fileAttachment se houve upload com sucesso
-    fileAttachment:   fileId ? { id: parseInt(fileId) } : undefined,
     ordemExibicao:    parseInt(document.getElementById('f-ordem').value) || 0,
     fonte:            document.getElementById('f-fonte').value,
-    publicado:        document.getElementById('f-publicado').checked,
+    publicado,
     destaque:         document.getElementById('f-destaque').checked,
+    estadual:         document.getElementById('f-estadual')?.value || '',
   };
 
   try {
     let salvo;
     if (id) {
       salvo = await ArtigoAPI.atualizar(parseInt(id), artigo);
-      toast('✅ Artigo atualizado!', 'success');
+      toast(publicado ? '🚀 Artigo publicado!' : '📝 Rascunho salvo!', 'success');
     } else {
       salvo = await ArtigoAPI.criar(artigo);
-      toast('✅ Artigo criado!', 'success');
+      toast(publicado ? '🚀 Artigo publicado!' : '📝 Rascunho salvo!', 'success');
     }
     slugAtual = salvo?.slug;
     document.getElementById('artigo-id').value = salvo?.id || '';
@@ -658,17 +673,13 @@ async function salvarArtigo(e) {
     // Recarrega grid
     await carregarTodosArtigos();
     renderGrid();
-    fecharModal();
+    if (publicado) fecharModal();
   } catch (err) {
-    // Mensagem específica para 500 (tabela não existe no Railway)
     const msg = err.message?.includes('500')
       ? '❌ Erro 500: A tabela "artigo" não existe no banco do Railway. Execute o setup_railway.sql primeiro.'
       : 'Erro ao salvar: ' + err.message;
     toast(msg, 'error');
     console.error('Erro ao salvar artigo:', err);
-  } finally {
-    btn.textContent = '💾 Salvar Artigo';
-    btn.disabled = false;
   }
 }
 
