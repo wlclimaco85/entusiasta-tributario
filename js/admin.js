@@ -35,7 +35,7 @@ function mostrarSecao(secao) {
     return;
   }
 
-  ['dashboard', 'lista'].forEach(s => {
+  ['dashboard', 'lista', 'usuarios'].forEach(s => {
     const el = document.getElementById(`secao-${s}`);
     if (el) el.style.display = s === secao ? 'block' : 'none';
   });
@@ -50,6 +50,7 @@ function mostrarSecao(secao) {
 
   if (secao === 'dashboard') renderDashboard();
   if (secao === 'lista') renderGrid();
+  if (secao === 'usuarios') carregarUsuarios();
 }
 
 // ── Carrega todos os artigos (para dashboard e grid) ──────────────────────────
