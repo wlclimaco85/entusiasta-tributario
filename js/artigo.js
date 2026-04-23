@@ -57,7 +57,10 @@ function renderArtigo(a) {
   const corpo = document.getElementById('artigo-corpo');
 
   // Imagem de capa — usa imagemUrl (campo calculado) ou imagemCapa
-  const imgSrc = a.imagemUrl || a.imagemCapa;
+  let imgSrc = a.imagemUrl || a.imagemCapa;
+  if (imgSrc && imgSrc.startsWith('/')) {
+    imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+  }
   if (imgSrc) {
     const capaEl = document.createElement('img');
     capaEl.src = imgSrc;

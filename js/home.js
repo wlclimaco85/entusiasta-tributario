@@ -76,7 +76,10 @@ async function carregarHero() {
 function renderHeroPrincipal(artigo) {
   const el = document.getElementById('hero-main');
   const emoji = emojiCategoria(artigo.categoria);
-  const imgSrc = artigo.imagemUrl || artigo.imagemCapa;
+  let imgSrc = artigo.imagemUrl || artigo.imagemCapa;
+  if (imgSrc && imgSrc.startsWith('/')) {
+    imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+  }
   const imgHtml = imgSrc
     ? `<img src="${imgSrc}" alt="${artigo.titulo}" class="hero-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : '';
@@ -196,7 +199,11 @@ async function carregarArtigos() {
 function renderCard(a) {
   const emoji = emojiCategoria(a.categoria);
   // Usa imagemUrl (campo calculado pelo backend) ou imagemCapa
-  const imgSrc = a.imagemUrl || a.imagemCapa;
+  // Se a URL for relativa (começa com /), adiciona o host do backend
+  let imgSrc = a.imagemUrl || a.imagemCapa;
+  if (imgSrc && imgSrc.startsWith('/')) {
+    imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+  }
   const imgHtml = imgSrc
     ? `<img src="${imgSrc}" alt="${a.titulo}" class="card-img" style="object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : '';
