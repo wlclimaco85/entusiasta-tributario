@@ -481,6 +481,19 @@ CREATE TABLE IF NOT EXISTS public.artigo (
       container: 'gridjs-dark',
     }
   }).render(container);
+
+  // Move o botão "+ Novo Artigo" para a linha da busca do Grid.js
+  gridInstance.on('ready', () => {
+    const headContainer = container.querySelector('.gridjs-head');
+    if (headContainer) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.style.cssText = 'font-size:0.8rem;padding:7px 14px;white-space:nowrap';
+      btn.textContent = '+ Novo Artigo';
+      btn.onclick = abrirModalNovo;
+      headContainer.appendChild(btn);
+    }
+  });
 }
 
 // ── Ações da grid ─────────────────────────────────────────────────────────────

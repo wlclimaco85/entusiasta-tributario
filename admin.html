@@ -115,8 +115,21 @@
       font-size: 0.85rem !important;
     }
     .gridjs-tbody tr:hover td.gridjs-td {
-      background: rgba(255,255,255,0.03) !important;
+      background: #2a2a2a !important;
+      color: var(--branco) !important;
     }
+    /* Garante que o texto nas células seja sempre visível */
+    .gridjs-tbody td.gridjs-td * { color: inherit !important; }
+    /* Linha selecionada/hover — texto branco explícito */
+    .gridjs-tbody tr:hover td.gridjs-td,
+    .gridjs-tbody tr:hover td.gridjs-td a,
+    .gridjs-tbody tr:hover td.gridjs-td div,
+    .gridjs-tbody tr:hover td.gridjs-td span { color: #ffffff !important; }
+
+    /* Botão novo artigo alinhado com a busca do Grid.js */
+    .gridjs-head { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 8px 0 !important; }
+    .gridjs-search { flex: 1 !important; }
+    .gridjs-search input { width: 100% !important; }
     .gridjs-search input {
       background: var(--preto-card) !important;
       border: 1px solid var(--preto-borda) !important;
@@ -239,7 +252,6 @@
     .modal-box #img-drop-hint div { color: #888 !important; }
     .modal-box .form-check span { color: #333; }
     .modal-box select.form-control option { background: #fff; color: #1a1a1a; }
-    }
 
     /* ── Toolbar acima da grid ── */
     .grid-toolbar {

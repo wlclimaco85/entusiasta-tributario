@@ -44,7 +44,11 @@ function atualizarHeader() {
   }
 }
 
-// ── Hero ──────────────────────────────────────────────────────────────────────
+// ── Hero — Carrossel de destaques ────────────────────────────────────────────
+let carrosselDestaques = [];
+let carrosselIndex = 0;
+let carrosselTimer = null;
+
 async function carregarHero() {
   try {
     const [destaques, ultimos] = await Promise.all([
@@ -52,17 +56,23 @@ async function carregarHero() {
       ArtigoAPI.ultimos(5).catch(() => []),
     ]);
 
-    const principal = (destaques || [])[0] || (ultimos || [])[0];
-    if (principal) {
-      renderHeroPrincipal(principal);
-    } else {
-      // Fallback: hero vazio com mensagem
+    carrosselDestaques = (destaques?.length ? destaques : [ultimos?.[0]]).filter(Boolean);
+
+    if (!carrosselDestaques.length) {
       document.getElementById('hero-main').innerHTML = `
         <div style="background:var(--preto-card);border-radius:var(--radius);padding:40px;text-align:center;min-height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
           <div style="font-size:3rem">📰</div>
           <p style="color:var(--cinza-texto)">Nenhum artigo em destaque ainda.</p>
           ${Auth.isLoggedIn() ? '<a href="admin.html" class="btn btn-primary" style="margin-top:8px">+ Criar primeiro artigo</a>' : ''}
         </div>`;
+    } else {
+      renderCarrossel();
+      if (carrosselDestaques.length > 1) {
+        carrosselTimer = setInterval(() => {
+          carrosselIndex = (carrosselIndex + 1) % carrosselDestaques.length;
+          renderCarrossel();
+        }, 60000); // 1 minuto
+      }
     }
 
     const sidebar = (ultimos || []).slice(0, 4);
@@ -73,8 +83,11 @@ async function carregarHero() {
   }
 }
 
-function renderHeroPrincipal(artigo) {
+function renderCarrossel() {
+  const artigo = carrosselDestaques[carrosselIndex];
   const el = document.getElementById('hero-main');
+  const total = carrosselDestaques.length;
+
   const emoji = emojiCategoria(artigo.categoria);
   let imgSrc = artigo.imagemUrl || artigo.imagemCapa;
   if (imgSrc && imgSrc.startsWith('/')) {
@@ -85,20 +98,47 @@ function renderHeroPrincipal(artigo) {
     : '';
   const emojiHtml = `<div class="hero-img-placeholder" style="display:${imgSrc ? 'none' : 'flex'}">${emoji}</div>`;
 
+  // Indicadores de posição (bolinhas)
+  const dots = total > 1 ? `
+    <div style="position:absolute;bottom:56px;right:16px;display:flex;gap:6px;z-index:2">
+      ${carrosselDestaques.map((_, i) => `
+        <button onclick="irCarrossel(${i})" style="width:8px;height:8px;border-radius:50%;border:none;cursor:pointer;padding:0;background:${i === carrosselIndex ? '#fff' : 'rgba(255,255,255,0.4)'}"></button>
+      `).join('')}
+    </div>
+    <button onclick="irCarrossel(${(carrosselIndex - 1 + total) % total})" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;z-index:2">‹</button>
+    <button onclick="irCarrossel(${(carrosselIndex + 1) % total})" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;z-index:2">›</button>
+  ` : '';
+
   el.innerHTML = `
-    <a href="artigo.html?slug=${artigo.slug}">
-      ${imgHtml}${emojiHtml}
-      <div class="hero-content">
-        <span class="tag">${artigo.categoria || 'Geral'}</span>
-        <h1><a href="artigo.html?slug=${artigo.slug}">${artigo.titulo}</a></h1>
-        <div class="hero-meta">
-          <span>✍️ ${artigo.autor || 'Entusiasta Tributário'}</span>
-          <span>📅 ${formatarData(artigo.dataPublicacao)}</span>
-          ${artigo.tempoLeituraMin ? `<span>⏱️ ${tempoLeitura(artigo.tempoLeituraMin)}</span>` : ''}
+    <div style="position:relative">
+      <a href="artigo.html?slug=${artigo.slug}">
+        ${imgHtml}${emojiHtml}
+        <div class="hero-content">
+          <span class="tag">${artigo.categoria || 'Geral'}</span>
+          <h1><a href="artigo.html?slug=${artigo.slug}">${artigo.titulo}</a></h1>
+          <div class="hero-meta">
+            <span>✍️ ${artigo.autor || 'Entusiasta Tributário'}</span>
+            <span>📅 ${formatarData(artigo.dataPublicacao)}</span>
+            ${artigo.tempoLeituraMin ? `<span>⏱️ ${tempoLeitura(artigo.tempoLeituraMin)}</span>` : ''}
+          </div>
         </div>
-      </div>
-    </a>
+      </a>
+      ${dots}
+    </div>
   `;
+}
+
+function irCarrossel(index) {
+  clearInterval(carrosselTimer);
+  carrosselIndex = index;
+  renderCarrossel();
+  // Reinicia o timer
+  if (carrosselDestaques.length > 1) {
+    carrosselTimer = setInterval(() => {
+      carrosselIndex = (carrosselIndex + 1) % carrosselDestaques.length;
+      renderCarrossel();
+    }, 60000);
+  }
 }
 
 function renderHeroSidebar(artigos) {
