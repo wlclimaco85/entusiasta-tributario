@@ -251,8 +251,12 @@ button { cursor: pointer; font-family: inherit; }
 
 /* Filtro de categorias no fundo branco */
 .categorias-bar-wrap { background: #f8f8f8; border-bottom: 1px solid #e5e5e5; padding: 16px 0; }
-.section .cat-btn { border-color: #ddd; color: #555; background: #fff; }
+.section .cat-btn { border-color: #ddd; color: #333; background: #fff; }
 .section .cat-btn:hover, .section .cat-btn.active {
+  background: var(--laranja); border-color: var(--laranja); color: #fff;
+}
+.categorias-bar-wrap .cat-btn { border-color: #ddd; color: #333; background: #fff; }
+.categorias-bar-wrap .cat-btn:hover, .categorias-bar-wrap .cat-btn.active {
   background: var(--laranja); border-color: var(--laranja); color: #fff;
 }
 .section .pag-btn { border-color: #ddd; color: #555; background: #fff; }
