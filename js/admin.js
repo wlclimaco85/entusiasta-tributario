@@ -565,6 +565,13 @@ function limparForm() {
   document.getElementById('f-menus').value = 'home';
   document.getElementById('btn-preview-site').style.display = 'none';
   slugAtual = null;
+  // Limpa erro de validação
+  const errDiv = document.getElementById('form-validacao-erro');
+  if (errDiv) errDiv.style.display = 'none';
+  ['f-titulo','f-categoria','f-resumo','f-conteudo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.borderColor = '';
+  });
   // Fecha preview se aberto
   document.getElementById('preview-area').style.display = 'none';
   document.getElementById('f-conteudo').style.display = 'block';
@@ -633,6 +640,45 @@ async function salvarRascunho() {
 
 /** Lógica interna de salvar artigo */
 async function _salvarArtigoComStatus(publicado) {
+  // ── Validação dos campos obrigatórios ──
+  const erros = [];
+  const titulo = document.getElementById('f-titulo').value.trim();
+  const categoria = document.getElementById('f-categoria').value.trim();
+  const resumo = document.getElementById('f-resumo').value.trim();
+  const conteudo = document.getElementById('f-conteudo').value.trim();
+
+  if (!titulo) erros.push('Título é obrigatório');
+  if (!categoria) erros.push('Categoria é obrigatória');
+  if (!resumo) erros.push('Resumo é obrigatório');
+  if (!conteudo) erros.push('Conteúdo é obrigatório');
+
+  // Mostra/esconde erro de validação
+  let errDiv = document.getElementById('form-validacao-erro');
+  if (!errDiv) {
+    errDiv = document.createElement('div');
+    errDiv.id = 'form-validacao-erro';
+    errDiv.style.cssText = 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:10px 14px;border-radius:8px;font-size:0.85rem;margin-bottom:16px';
+    document.getElementById('artigo-form').prepend(errDiv);
+  }
+
+  if (erros.length) {
+    errDiv.innerHTML = '⚠️ Corrija os campos obrigatórios:<ul style="margin:6px 0 0 16px">' +
+      erros.map(e => `<li>${e}</li>`).join('') + '</ul>';
+    errDiv.style.display = 'block';
+    // Destaca campos vazios
+    ['f-titulo','f-categoria','f-resumo','f-conteudo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.borderColor = el.value.trim() ? '' : '#ef4444';
+    });
+    return;
+  }
+  errDiv.style.display = 'none';
+  // Remove destaque de erro dos campos
+  ['f-titulo','f-categoria','f-resumo','f-conteudo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.borderColor = '';
+  });
+
   const id = document.getElementById('artigo-id').value;
   const imagemCapaRaw = document.getElementById('f-imagem').value;
   const imagemCapa = imagemCapaRaw && !imagemCapaRaw.startsWith('data:')
