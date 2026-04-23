@@ -96,7 +96,7 @@ async function criarUsuario(e) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/rest/auth/cadastrar`, {
+    const res = await fetch(`${API_BASE}/api/login/site`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -176,7 +176,7 @@ async function confirmarResetSenha(e) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/rest/auth/alterar-senha`, {
+    const res = await fetch(`${API_BASE}/api/login/alterar-senha`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
