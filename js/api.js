@@ -1,0 +1,173 @@
+/**
+ * api.js — Camada de comunicação com o backend AppAcademia
+ * Todos os endpoints de artigos passam por aqui.
+ */
+
+// ── Configuração ──────────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8088/boletobancos';
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+const Auth = {
+  getToken: () => localStorage.getItem('et_token'),
+  setToken: (t) => localStorage.setItem('et_token', t),
+  removeToken: () => localStorage.removeItem('et_token'),
+  isLoggedIn: () => !!localStorage.getItem('et_token'),
+  getUser: () => {
+    try { return JSON.parse(localStorage.getItem('et_user') || 'null'); } catch { return null; }
+  },
+  setUser: (u) => localStorage.setItem('et_user', JSON.stringify(u)),
+  logout: () => {
+    localStorage.removeItem('et_token');
+    localStorage.removeItem('et_user');
+    window.location.href = 'login.html';
+  }
+};
+
+// ── Fetch wrapper ─────────────────────────────────────────────────────────────
+async function apiFetch(path, options = {}) {
+  const token = Auth.getToken();
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    Auth.logout();
+    return null;
+  }
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`HTTP ${res.status}: ${err}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ── API de Artigos ────────────────────────────────────────────────────────────
+const ArtigoAPI = {
+
+  /** Listagem pública paginada */
+  listarPublicos: (params = {}) => {
+    const q = new URLSearchParams({ pagina: 0, tamanho: 12, ...params }).toString();
+    return apiFetch(`/api/artigos/publicos?${q}`);
+  },
+
+  /** Artigo público por slug */
+  buscarPorSlug: (slug) => apiFetch(`/api/artigos/publicos/${slug}`),
+
+  /** Artigos em destaque */
+  destaques: () => apiFetch('/api/artigos/destaques'),
+
+  /** Últimos N artigos */
+  ultimos: (quantidade = 6) => apiFetch(`/api/artigos/ultimos?quantidade=${quantidade}`),
+
+  /** Categorias disponíveis */
+  categorias: () => apiFetch('/api/artigos/categorias'),
+
+  // ── Admin ──────────────────────────────────────────────────────────────────
+
+  /** Listagem admin com filtros */
+  listar: (params = {}) => {
+    const q = new URLSearchParams({ pagina: 0, tamanho: 25, ...params }).toString();
+    return apiFetch(`/api/artigos?${q}`);
+  },
+
+  /** Buscar por ID */
+  buscarPorId: (id) => apiFetch(`/api/artigos/${id}`),
+
+  /** Criar artigo */
+  criar: (artigo) => apiFetch('/api/artigos', {
+    method: 'POST',
+    body: JSON.stringify(artigo)
+  }),
+
+  /** Atualizar artigo */
+  atualizar: (id, artigo) => apiFetch(`/api/artigos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(artigo)
+  }),
+
+  /** Excluir artigo */
+  excluir: (id) => apiFetch(`/api/artigos/${id}`, { method: 'DELETE' }),
+
+  /** Publicar / despublicar */
+  publicar: (id, publicado) => apiFetch(`/api/artigos/${id}/publicar?publicado=${publicado}`, {
+    method: 'PATCH'
+  }),
+
+  /** Alterar ordem */
+  alterarOrdem: (id, ordemExibicao) => apiFetch(`/api/artigos/${id}/ordem`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ordemExibicao })
+  }),
+
+  /** Alterar destaque */
+  alterarDestaque: (id, destaque) => apiFetch(`/api/artigos/${id}/destaque?destaque=${destaque}`, {
+    method: 'PATCH'
+  }),
+};
+
+// ── API de Auth ───────────────────────────────────────────────────────────────
+const AuthAPI = {
+  login: (email, senha) => apiFetch('/rest/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, senha })
+  })
+};
+
+// ── Utilitários de UI ─────────────────────────────────────────────────────────
+function toast(msg, tipo = 'info') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = `toast ${tipo}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function formatarData(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatarDataCurta(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function tempoLeitura(min) {
+  if (!min) return '';
+  return `${min} min de leitura`;
+}
+
+function slugify(texto) {
+  return texto.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Emoji por categoria
+function emojiCategoria(cat) {
+  const map = {
+    'tributário': '📊', 'tributario': '📊',
+    'mei': '🏪',
+    'simples nacional': '📋',
+    'reforma tributária': '⚖️', 'reforma tributaria': '⚖️',
+    'empresarial': '🏢',
+    'contabilidade': '🧮',
+    'fiscal': '📑',
+    'trabalhista': '👷',
+  };
+  return map[(cat || '').toLowerCase()] || '📰';
+}

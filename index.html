@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entusiasta Tributário — Notícias e Artigos Tributários</title>
+  <meta name="description" content="Portal de notícias e artigos do meio tributário e empresarial. Fique por dentro das mudanças fiscais, reforma tributária, MEI e muito mais.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">
+      <div class="logo-icon">$</div>
+      <div class="logo-text">entusiasta<br><span>tributário</span></div>
+    </a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="index.html?cat=Tributário">Tributário</a></li>
+        <li><a href="index.html?cat=MEI">MEI</a></li>
+        <li><a href="index.html?cat=Empresarial">Empresarial</a></li>
+        <li><a href="index.html?cat=Reforma Tributária">Reforma</a></li>
+      </ul>
+    </nav>
+    <div class="header-actions" id="header-actions">
+      <a href="admin.html" class="btn btn-primary" id="btn-admin" style="display:none">
+        ✏️ Escrever
+      </a>
+      <a href="login.html" class="btn btn-ghost" id="btn-login">Entrar</a>
+    </div>
+  </div>
+</header>
+
+<!-- ── Hero / Destaque ── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <!-- Artigo principal em destaque -->
+      <div class="hero-main" id="hero-main">
+        <div class="skeleton skeleton-card"></div>
+      </div>
+      <!-- Sidebar com mais artigos -->
+      <aside class="hero-sidebar">
+        <div class="hero-sidebar-title">🔥 Mais lidos</div>
+        <div id="hero-sidebar-list">
+          <div class="skeleton skeleton-text" style="height:80px;margin-bottom:12px"></div>
+          <div class="skeleton skeleton-text" style="height:80px;margin-bottom:12px"></div>
+          <div class="skeleton skeleton-text" style="height:80px"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ── Filtro de categorias ── -->
+<div class="container" style="padding-top:40px">
+  <div class="categorias-bar" id="categorias-bar">
+    <button class="cat-btn active" data-cat="">Todos</button>
+  </div>
+</div>
+
+<!-- ── Grid de artigos ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title" id="section-titulo">Últimas Notícias</h2>
+      <span id="total-artigos" style="font-size:0.8rem;color:var(--cinza-texto)"></span>
+    </div>
+
+    <div class="cards-grid" id="artigos-grid">
+      <!-- Skeletons -->
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+    </div>
+
+    <!-- Paginação -->
+    <div class="paginacao" id="paginacao"></div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">
+          <div class="logo-icon">$</div>
+          <div class="logo-text">entusiasta<br><span>tributário</span></div>
+        </a>
+        <p>Portal de notícias e artigos do meio tributário e empresarial. Conteúdo de qualidade para profissionais e empreendedores.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Categorias</h4>
+        <ul id="footer-cats">
+          <li><a href="index.html?cat=Tributário">Tributário</a></li>
+          <li><a href="index.html?cat=MEI">MEI</a></li>
+          <li><a href="index.html?cat=Empresarial">Empresarial</a></li>
+          <li><a href="index.html?cat=Reforma Tributária">Reforma Tributária</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="admin.html">Painel Admin</a></li>
+          <li><a href="login.html">Entrar</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2024 Entusiasta Tributário. Todos os direitos reservados.</span>
+      <span>Conteúdo tributário e empresarial</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

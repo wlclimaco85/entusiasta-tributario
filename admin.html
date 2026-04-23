@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Entusiasta Tributário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">
+      <div class="logo-icon">$</div>
+      <div class="logo-text">entusiasta<br><span>tributário</span></div>
+    </a>
+    <div style="font-size:0.85rem;color:var(--cinza-texto)">Painel de Administração</div>
+    <div class="header-actions">
+      <a href="index.html" class="btn btn-ghost">🌐 Ver site</a>
+      <button class="btn btn-ghost" onclick="Auth.logout()">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="admin-layout">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <nav class="admin-nav">
+      <a href="#" class="active" onclick="mostrarSecao('lista')">📋 Artigos</a>
+      <a href="#" onclick="mostrarSecao('novo')">✏️ Novo Artigo</a>
+      <a href="index.html" target="_blank">🌐 Ver Site</a>
+    </nav>
+  </aside>
+
+  <!-- Conteúdo -->
+  <main class="admin-content">
+
+    <!-- ── Lista de artigos ── -->
+    <section id="secao-lista">
+      <div class="admin-title">
+        📋 Artigos
+        <button class="btn btn-primary" onclick="mostrarSecao('novo')" style="margin-left:auto;font-size:0.85rem">
+          + Novo Artigo
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <input type="text" id="filtro-titulo" class="form-control" placeholder="Buscar por título..." style="max-width:280px" oninput="filtrarArtigos()">
+        <select id="filtro-publicado" class="form-control" style="max-width:160px" onchange="filtrarArtigos()">
+          <option value="">Todos</option>
+          <option value="true">Publicados</option>
+          <option value="false">Rascunhos</option>
+        </select>
+        <select id="filtro-cat" class="form-control" style="max-width:200px" onchange="filtrarArtigos()">
+          <option value="">Todas as categorias</option>
+        </select>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Ordem</th>
+              <th>Título</th>
+              <th>Categoria</th>
+              <th>Status</th>
+              <th>Destaque</th>
+              <th>Publicado em</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-artigos">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--cinza-texto)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="paginacao" id="paginacao-admin"></div>
+    </section>
+
+    <!-- ── Formulário novo/editar ── -->
+    <section id="secao-form" style="display:none">
+      <div class="admin-title">
+        <button onclick="mostrarSecao('lista')" style="background:none;border:none;color:var(--cinza-texto);font-size:1.2rem;cursor:pointer">←</button>
+        <span id="form-titulo-header">Novo Artigo</span>
+      </div>
+
+      <form id="artigo-form" onsubmit="salvarArtigo(event)">
+        <input type="hidden" id="artigo-id">
+
+        <div class="form-row">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Título *</label>
+            <input type="text" id="f-titulo" class="form-control" required placeholder="Título do artigo" oninput="gerarSlugAuto()">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Subtítulo / Chamada</label>
+          <input type="text" id="f-subtitulo" class="form-control" placeholder="Subtítulo ou chamada do artigo">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Slug (URL amigável)</label>
+            <input type="text" id="f-slug" class="form-control" placeholder="gerado-automaticamente">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoria</label>
+            <input type="text" id="f-categoria" class="form-control" list="cats-list" placeholder="Ex: Tributário, MEI, Empresarial">
+            <datalist id="cats-list">
+              <option value="Tributário">
+              <option value="MEI">
+              <option value="Empresarial">
+              <option value="Reforma Tributária">
+              <option value="Simples Nacional">
+              <option value="Contabilidade">
+              <option value="Trabalhista">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Resumo (exibido nos cards)</label>
+          <textarea id="f-resumo" class="form-control" rows="3" placeholder="Breve resumo do artigo..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Conteúdo Completo (HTML)</label>
+          <div class="editor-toolbar">
+            <button type="button" class="editor-btn" onclick="inserirTag('h2')">H2</button>
+            <button type="button" class="editor-btn" onclick="inserirTag('h3')">H3</button>
+            <button type="button" class="editor-btn" onclick="inserirTag('p')">§</button>
+            <button type="button" class="editor-btn" onclick="inserirTag('strong')"><b>B</b></button>
+            <button type="button" class="editor-btn" onclick="inserirTag('em')"><i>I</i></button>
+            <button type="button" class="editor-btn" onclick="inserirTag('ul')">• Lista</button>
+            <button type="button" class="editor-btn" onclick="inserirTag('blockquote')">" Citação</button>
+            <button type="button" class="editor-btn" onclick="inserirTag('a')">🔗 Link</button>
+            <button type="button" class="editor-btn" onclick="togglePreview()">👁️ Preview</button>
+          </div>
+          <textarea id="f-conteudo" class="form-control" id="editor-area" rows="20" placeholder="<h2>Título da seção</h2>&#10;<p>Conteúdo do artigo...</p>"></textarea>
+          <div id="preview-area" style="display:none;padding:20px;background:var(--preto-card);border:1px solid var(--preto-borda);border-radius:0 0 var(--radius) var(--radius);min-height:200px" class="artigo-conteudo"></div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Autor</label>
+            <input type="text" id="f-autor" class="form-control" placeholder="Nome do autor" value="Entusiasta Tributário">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tags (separadas por vírgula)</label>
+            <input type="text" id="f-tags" class="form-control" placeholder="reforma tributária, MEI, imposto">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Imagem de Capa (URL)</label>
+            <input type="url" id="f-imagem" class="form-control" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ordem de Exibição</label>
+            <input type="number" id="f-ordem" class="form-control" value="0" min="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fonte</label>
+            <input type="text" id="f-fonte" class="form-control" placeholder="Nome da fonte">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link da Fonte</label>
+            <input type="url" id="f-link-fonte" class="form-control" placeholder="https://...">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:24px;margin-bottom:24px">
+          <label class="form-check">
+            <input type="checkbox" id="f-publicado">
+            <span>Publicar imediatamente</span>
+          </label>
+          <label class="form-check">
+            <input type="checkbox" id="f-destaque">
+            <span>Artigo em destaque</span>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <button type="submit" class="btn btn-primary" id="btn-salvar">💾 Salvar Artigo</button>
+          <button type="button" class="btn btn-ghost" onclick="mostrarSecao('lista')">Cancelar</button>
+          <button type="button" class="btn btn-ghost" id="btn-preview-site" style="display:none" onclick="abrirPreview()">🌐 Ver no site</button>
+        </div>
+      </form>
+    </section>
+
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
