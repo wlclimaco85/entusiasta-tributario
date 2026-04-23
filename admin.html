@@ -183,14 +183,15 @@
       overflow-y: auto;
     }
     .modal-box {
-      background: var(--preto-card);
-      border: 1px solid var(--preto-borda);
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
       border-radius: 12px;
       width: 100%;
       max-width: 860px;
       padding: 32px;
       position: relative;
       animation: modalIn 0.25s ease;
+      color: #1a1a1a;
     }
     @keyframes modalIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .modal-close {
@@ -198,21 +199,37 @@
       top: 16px; right: 16px;
       background: none;
       border: none;
-      color: var(--cinza-texto);
+      color: #888;
       font-size: 1.4rem;
       cursor: pointer;
       line-height: 1;
     }
-    .modal-close:hover { color: var(--branco); }
+    .modal-close:hover { color: #1a1a1a; }
     .modal-title {
       font-size: 1.2rem;
       font-weight: 800;
       margin-bottom: 24px;
       padding-bottom: 16px;
-      border-bottom: 1px solid var(--preto-borda);
+      border-bottom: 1px solid #e5e5e5;
       display: flex;
       align-items: center;
       gap: 10px;
+      color: #1a1a1a;
+    }
+    /* Inputs, labels e elementos dentro do modal */
+    .modal-box .form-label { color: #444; }
+    .modal-box .form-control { background: #f8f8f8; border-color: #ddd; color: #1a1a1a; }
+    .modal-box .form-control:focus { border-color: var(--laranja); background: #fff; box-shadow: 0 0 0 3px rgba(224,123,0,0.1); }
+    .modal-box .form-control::placeholder { color: #aaa; }
+    .modal-box small { color: #888; }
+    .modal-box .editor-toolbar { background: #f0f0f0; border-color: #ddd; }
+    .modal-box .editor-btn { color: #555; border-color: #ddd; background: #fff; }
+    .modal-box .editor-btn:hover { background: var(--laranja); color: #fff; border-color: var(--laranja); }
+    .modal-box #preview-area { background: #f8f8f8; border-color: #ddd; color: #1a1a1a; }
+    .modal-box #img-drop-area { background: #f8f8f8 !important; border-color: #ddd !important; }
+    .modal-box #img-drop-hint div { color: #888 !important; }
+    .modal-box .form-check span { color: #333; }
+    .modal-box select.form-control option { background: #fff; color: #1a1a1a; }
     }
 
     /* ── Toolbar acima da grid ── */
