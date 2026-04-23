@@ -538,8 +538,8 @@ button { cursor: pointer; font-family: inherit; }
   background: rgba(224,123,0,0.1);
   border-right: 3px solid var(--laranja);
 }
-.admin-content { padding: 32px; background: #ffffff; color: #1a1a1a; }
-.admin-title { color: #1a1a1a; }
+.admin-content { padding: 32px; }
+.admin-title {}
 .admin-title {
   font-size: 1.5rem;
   font-weight: 800;
