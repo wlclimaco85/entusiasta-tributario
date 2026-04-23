@@ -8,6 +8,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 
+  <!-- Sobrescreve admin para fundo branco com containers escuros -->
+  <style>
+    body { background: #f0f0f0; }
+    .admin-content { background: #ffffff !important; color: #1a1a1a !important; }
+    .admin-title { color: #1a1a1a !important; }
+    .admin-sidebar { background: var(--preto-card) !important; }
+    #grid-total { color: #888 !important; }
+  </style>
+
   <!-- Grid.js -->
   <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
 
@@ -238,7 +247,7 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 16px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 12px;
     }
     .grid-toolbar-left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
