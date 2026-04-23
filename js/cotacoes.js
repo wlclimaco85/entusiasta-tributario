@@ -55,34 +55,31 @@ async function carregarTudo() {
   ]);
 }
 
-// ── Ibovespa via Yahoo Finance + proxy CORS ───────────────────────────────────
+// ── Ibovespa via AwesomeAPI (sem CORS, sem token) ────────────────────────────
 async function carregarIbovespa() {
   try {
-    const data = await fetchComProxy(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=30m&range=1d'
+    const res = await fetch(
+      'https://economia.awesomeapi.com.br/json/last/IBOVESPA',
+      { signal: AbortSignal.timeout(6000) }
     );
-    const meta = data?.chart?.result?.[0]?.meta;
-    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+    if (!res.ok) throw new Error('indisponível');
+    const data = await res.json();
+    const d = data?.IBOVESPA;
+    if (!d) throw new Error('sem dados');
 
-    if (meta) {
-      const valor = meta.regularMarketPrice;
-      const anterior = meta.chartPreviousClose || meta.previousClose;
-      const variacao = anterior ? ((valor - anterior) / anterior) * 100 : 0;
+    const valor = parseFloat(d.bid);
+    const anterior = parseFloat(d.ask);
+    const variacao = parseFloat(d.pctChange) || 0;
 
-      document.getElementById('ibov-valor').textContent = formatarNumero(valor);
-      const varEl = document.getElementById('ibov-var');
-      varEl.textContent = `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(2)}%`;
-      varEl.className = `ibov-variacao ${variacao >= 0 ? 'up' : 'down'}`;
-      document.getElementById('ibov-meta').textContent =
-        `Fechamento anterior: ${formatarNumero(anterior)} · Abertura: ${formatarNumero(meta.regularMarketOpen || anterior)}`;
-      document.getElementById('ibov-hora').textContent =
-        `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
+    document.getElementById('ibov-valor').textContent = formatarNumero(valor);
+    const varEl = document.getElementById('ibov-var');
+    varEl.textContent = `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(2)}%`;
+    varEl.className = `ibov-variacao ${variacao >= 0 ? 'up' : 'down'}`;
+    document.getElementById('ibov-meta').textContent =
+      `Fechamento anterior: ${formatarNumero(anterior)}`;
+    document.getElementById('ibov-hora').textContent =
+      `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
 
-      const precos = closes.filter(Boolean);
-      if (precos.length > 1) renderMiniChart(precos, variacao < 0);
-    } else {
-      throw new Error('sem dados');
-    }
   } catch (_) {
     document.getElementById('ibov-valor').textContent = 'Indisponível';
     document.getElementById('ibov-meta').textContent =

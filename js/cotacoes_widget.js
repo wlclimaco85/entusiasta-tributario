@@ -17,34 +17,21 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
-// ── Ibovespa via Yahoo Finance + proxy CORS ────────────────────────────────────
+// ── Ibovespa via AwesomeAPI (sem CORS, sem token) ────────────────────────────
 async function carregarWidgetIbov() {
   try {
-    // Tenta direto primeiro, depois via proxy
-    let data = null;
-    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d';
+    // AwesomeAPI suporta índices brasileiros incluindo IBOVESPA
+    const res = await fetch(
+      'https://economia.awesomeapi.com.br/json/last/IBOVESPA',
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) throw new Error('indisponível');
+    const data = await res.json();
+    const d = data?.IBOVESPA;
+    if (!d) throw new Error('sem dados');
 
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) data = await res.json();
-    } catch (_) {}
-
-    if (!data) {
-      const proxies = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
-      for (const proxy of proxies) {
-        try {
-          const res = await fetch(proxy + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
-          if (res.ok) { data = await res.json(); break; }
-        } catch (_) { continue; }
-      }
-    }
-
-    const meta = data?.chart?.result?.[0]?.meta;
-    if (!meta) throw new Error('sem dados');
-
-    const valor = meta.regularMarketPrice;
-    const anterior = meta.chartPreviousClose || meta.previousClose;
-    const var_ = anterior ? ((valor - anterior) / anterior) * 100 : 0;
+    const valor = parseFloat(d.bid);
+    const var_ = parseFloat(d.pctChange) || 0;
 
     const valEl = document.getElementById('w-ibov-valor');
     const varEl = document.getElementById('w-ibov-var');
@@ -56,7 +43,7 @@ async function carregarWidgetIbov() {
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
       varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
     }
-    if (metaEl) metaEl.textContent = `Fech. ant.: ${anterior?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
+    if (metaEl) metaEl.textContent = `Fech. ant.: ${parseFloat(d.ask)?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
   } catch (_) {
     const valEl = document.getElementById('w-ibov-valor');
     const metaEl = document.getElementById('w-ibov-meta');
