@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.artigo (
     autor               VARCHAR(150),
     categoria           VARCHAR(100),
     tags                VARCHAR(500),
-    imagem_capa         VARCHAR(500),
+    imagem_capa         VARCHAR(2000),
     slug                VARCHAR(300) UNIQUE,
     fonte               VARCHAR(300),
     link_fonte          VARCHAR(500),

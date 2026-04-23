@@ -611,6 +611,12 @@ async function salvarArtigo(e) {
   btn.disabled = true;
 
   const id = document.getElementById('artigo-id').value;
+  const imagemCapaRaw = document.getElementById('f-imagem').value;
+  // Nunca envia base64 para o backend — coluna VARCHAR(500) não suporta
+  const imagemCapa = imagemCapaRaw && !imagemCapaRaw.startsWith('data:')
+    ? imagemCapaRaw
+    : '';
+
   const artigo = {
     titulo:           document.getElementById('f-titulo').value,
     subtitulo:        document.getElementById('f-subtitulo').value,
@@ -621,7 +627,7 @@ async function salvarArtigo(e) {
     conteudoCompleto: document.getElementById('f-conteudo').value,
     autor:            document.getElementById('f-autor').value,
     tags:             document.getElementById('f-tags').value,
-    imagemCapa:       document.getElementById('f-imagem').value,
+    imagemCapa,
     ordemExibicao:    parseInt(document.getElementById('f-ordem').value) || 0,
     fonte:            document.getElementById('f-fonte').value,
     publicado:        document.getElementById('f-publicado').checked,
@@ -647,7 +653,12 @@ async function salvarArtigo(e) {
     renderGrid();
     fecharModal();
   } catch (err) {
-    toast('Erro ao salvar: ' + err.message, 'error');
+    // Mensagem específica para 500 (tabela não existe no Railway)
+    const msg = err.message?.includes('500')
+      ? '❌ Erro 500: A tabela "artigo" não existe no banco do Railway. Execute o setup_railway.sql primeiro.'
+      : 'Erro ao salvar: ' + err.message;
+    toast(msg, 'error');
+    console.error('Erro ao salvar artigo:', err);
   } finally {
     btn.textContent = '💾 Salvar Artigo';
     btn.disabled = false;
@@ -764,13 +775,18 @@ async function processarImagem(file) {
     return;
   }
 
-  // Fallback: converte para Base64 (data URL) e salva localmente
+  // Fallback: converte para Base64 apenas para PREVIEW local
+  // NÃO salva base64 no campo f-imagem (coluna VARCHAR(500) não suporta)
+  // O artigo será salvo sem imagem de capa
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result;
-    document.getElementById('f-imagem').value = dataUrl;
+    // Mostra preview mas NÃO coloca no campo de texto
     mostrarPreview(dataUrl);
-    toast('Imagem carregada localmente (base64)', 'info');
+    // Guarda temporariamente para referência visual
+    document.getElementById('f-imagem').dataset.base64 = dataUrl;
+    document.getElementById('f-imagem').placeholder = '📷 Imagem carregada localmente (upload falhou)';
+    toast('Upload falhou. Imagem visível apenas localmente.', 'info');
   };
   reader.readAsDataURL(file);
 }
@@ -783,23 +799,28 @@ async function uploadImagemBackend(file) {
   try {
     const formData = new FormData();
     formData.append('file', file, file.name);
+    formData.append('fileName', file.name);
+    formData.append('fileType', file.type || 'image/jpeg');
+    // Campos obrigatórios pelo FileController — usa valores padrão
+    formData.append('diretorio', '{"id":1}');
+    formData.append('empresa',   '{"id":1}');
+    formData.append('parceiro',  '{"id":1}');
 
     const res = await fetch(`${API_BASE}/api/files/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
+      // NÃO define Content-Type — o browser define automaticamente com boundary
       body: formData,
     });
 
     if (!res.ok) return null;
 
     const data = await res.json();
-    // Extrai URL do arquivo do formato de resposta do backend
-    const fileId = data?.id || data?.fileId || data?.data?.id;
+    const fileId = data?.fileId || data?.id || data?.data?.id;
     if (fileId) {
       return `${API_BASE}/api/files/download/${fileId}`;
     }
-    // Se o backend retornar URL direta
-    return data?.url || data?.fileUrl || data?.data?.url || null;
+    return data?.url || data?.fileUrl || null;
   } catch (_) {
     return null;
   }
