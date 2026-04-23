@@ -21,21 +21,51 @@
     .artigo-conteudo strong { color: #1a1a1a; }
     .artigo-conteudo blockquote { background: rgba(224,123,0,0.06); color: #555; }
     .artigo-layout { background: #ffffff; }
+
+    /* Sidebar */
     .sidebar-widget { background: #f8f8f8; border: 1px solid #e5e5e5; }
     .sidebar-widget h3 { color: var(--laranja); border-bottom-color: #e5e5e5; }
     .card-mini { border-bottom-color: #e5e5e5; }
     .card-mini-body h3 a { color: #1a1a1a; }
     .card-mini-meta { color: #888; }
+    /* Miniatura dos artigos relacionados — fundo branco */
+    .card-mini-img {
+      background: #f0f0f0 !important;
+      border: 1px solid #e5e5e5;
+    }
+
+    /* Barra de compartilhar — fundo branco, borda laranja */
+    .share-bar,
+    [class*="share"],
+    .artigo-share {
+      background: #ffffff !important;
+      border: 1px solid var(--laranja) !important;
+      border-radius: var(--radius) !important;
+    }
+    .share-bar button,
+    .artigo-share button {
+      color: #333 !important;
+      background: transparent !important;
+      border: 1px solid #e5e5e5 !important;
+    }
+    .share-bar button:hover,
+    .artigo-share button:hover {
+      background: var(--laranja) !important;
+      color: #fff !important;
+      border-color: var(--laranja) !important;
+    }
+    /* Título "Compartilhar este artigo" */
+    .share-bar p, .share-bar span, .share-bar label,
+    .artigo-share p, .artigo-share span {
+      color: #555 !important;
+    }
+
+    /* Footer */
     .site-footer { background: #f5f5f5; border-top-color: #e5e5e5; }
     .footer-bottom { border-top-color: #e5e5e5; color: #888; }
     .footer-col a { color: #555; }
     .footer-col h4 { color: var(--laranja); }
     .footer-brand p { color: #666; }
-    /* Breadcrumb */
-    .breadcrumb { color: #888; }
-    .breadcrumb a { color: var(--laranja); }
-    /* Compartilhar */
-    .share-bar { border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; }
   </style>
 </head>
 <body>
@@ -64,13 +94,13 @@
 </header>
 
 <!-- Breadcrumb -->
-<div style="background:var(--preto-card);border-bottom:1px solid var(--preto-borda);padding:10px 0">
-  <div class="container" style="font-size:0.8rem;color:var(--cinza-texto)">
+<div style="background:#f8f8f8;border-bottom:1px solid #e5e5e5;padding:10px 0">
+  <div class="container" style="font-size:0.8rem;color:#888">
     <a href="index.html" style="color:var(--laranja)">Home</a>
     <span style="margin:0 8px">›</span>
     <span id="breadcrumb-cat">Artigo</span>
     <span style="margin:0 8px">›</span>
-    <span id="breadcrumb-titulo" style="color:var(--branco)">Carregando...</span>
+    <span id="breadcrumb-titulo" style="color:#333">Carregando...</span>
   </div>
 </div>
 
@@ -103,19 +133,19 @@
         <div class="artigo-conteudo" id="artigo-corpo"></div>
 
         <!-- Tags -->
-        <div id="artigo-tags" style="margin-top:32px;padding-top:24px;border-top:1px solid var(--preto-borda)"></div>
+        <div id="artigo-tags" style="margin-top:32px;padding-top:24px;border-top:1px solid #e5e5e5"></div>
 
         <!-- Fonte -->
-        <div id="artigo-fonte" style="margin-top:16px;font-size:0.8rem;color:var(--cinza-texto)"></div>
+        <div id="artigo-fonte" style="margin-top:16px;font-size:0.8rem;color:#888"></div>
 
         <!-- Compartilhar -->
-        <div style="margin-top:32px;padding:20px;background:var(--preto-card);border-radius:var(--radius);border:1px solid var(--preto-borda)">
-          <p style="font-size:0.85rem;font-weight:600;margin-bottom:12px">Compartilhar este artigo:</p>
+        <div style="margin-top:32px;padding:20px;background:#ffffff;border-radius:var(--radius);border:1px solid var(--laranja)">
+          <p style="font-size:0.85rem;font-weight:600;margin-bottom:12px;color:#333">Compartilhar este artigo:</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-ghost" onclick="compartilhar('whatsapp')" style="font-size:0.8rem">📱 WhatsApp</button>
-            <button class="btn btn-ghost" onclick="compartilhar('twitter')" style="font-size:0.8rem">🐦 Twitter/X</button>
-            <button class="btn btn-ghost" onclick="compartilhar('linkedin')" style="font-size:0.8rem">💼 LinkedIn</button>
-            <button class="btn btn-ghost" onclick="copiarLink()" style="font-size:0.8rem">🔗 Copiar link</button>
+            <button onclick="compartilhar('whatsapp')" style="font-size:0.8rem;padding:7px 14px;border-radius:var(--radius);border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--laranja)';this.style.color='#fff';this.style.borderColor='var(--laranja)'" onmouseout="this.style.background='#fff';this.style.color='#333';this.style.borderColor='#ddd'">📱 WhatsApp</button>
+            <button onclick="compartilhar('twitter')" style="font-size:0.8rem;padding:7px 14px;border-radius:var(--radius);border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--laranja)';this.style.color='#fff';this.style.borderColor='var(--laranja)'" onmouseout="this.style.background='#fff';this.style.color='#333';this.style.borderColor='#ddd'">🐦 Twitter/X</button>
+            <button onclick="compartilhar('linkedin')" style="font-size:0.8rem;padding:7px 14px;border-radius:var(--radius);border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--laranja)';this.style.color='#fff';this.style.borderColor='var(--laranja)'" onmouseout="this.style.background='#fff';this.style.color='#333';this.style.borderColor='#ddd'">💼 LinkedIn</button>
+            <button onclick="copiarLink()" style="font-size:0.8rem;padding:7px 14px;border-radius:var(--radius);border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--laranja)';this.style.color='#fff';this.style.borderColor='var(--laranja)'" onmouseout="this.style.background='#fff';this.style.color='#333';this.style.borderColor='#ddd'">🔗 Copiar link</button>
           </div>
         </div>
       </main>
@@ -137,8 +167,8 @@
 <!-- Artigo não encontrado -->
 <div id="artigo-404" style="display:none;text-align:center;padding:80px 20px">
   <div style="font-size:4rem;margin-bottom:16px">🔍</div>
-  <h2 style="margin-bottom:8px">Artigo não encontrado</h2>
-  <p style="color:var(--cinza-texto);margin-bottom:24px">O artigo que você procura não existe ou foi removido.</p>
+  <h2 style="margin-bottom:8px;color:#1a1a1a">Artigo não encontrado</h2>
+  <p style="color:#888;margin-bottom:24px">O artigo que você procura não existe ou foi removido.</p>
   <a href="index.html" class="btn btn-primary">← Voltar para Home</a>
 </div>
 
