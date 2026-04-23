@@ -55,6 +55,18 @@ function renderArtigo(a) {
 
   // Corpo (HTML)
   const corpo = document.getElementById('artigo-corpo');
+
+  // Imagem de capa — usa imagemUrl (campo calculado) ou imagemCapa
+  const imgSrc = a.imagemUrl || a.imagemCapa;
+  if (imgSrc) {
+    const capaEl = document.createElement('img');
+    capaEl.src = imgSrc;
+    capaEl.alt = a.titulo;
+    capaEl.className = 'artigo-capa';
+    capaEl.onerror = () => capaEl.remove();
+    corpo.parentElement.insertBefore(capaEl, corpo);
+  }
+
   if (a.conteudoCompleto) {
     corpo.innerHTML = a.conteudoCompleto;
   } else if (a.resumo) {

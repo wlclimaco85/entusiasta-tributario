@@ -76,9 +76,15 @@ async function carregarHero() {
 function renderHeroPrincipal(artigo) {
   const el = document.getElementById('hero-main');
   const emoji = emojiCategoria(artigo.categoria);
+  const imgSrc = artigo.imagemUrl || artigo.imagemCapa;
+  const imgHtml = imgSrc
+    ? `<img src="${imgSrc}" alt="${artigo.titulo}" class="hero-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : '';
+  const emojiHtml = `<div class="hero-img-placeholder" style="display:${imgSrc ? 'none' : 'flex'}">${emoji}</div>`;
+
   el.innerHTML = `
     <a href="artigo.html?slug=${artigo.slug}">
-      <div class="hero-img-placeholder">${emoji}</div>
+      ${imgHtml}${emojiHtml}
       <div class="hero-content">
         <span class="tag">${artigo.categoria || 'Geral'}</span>
         <h1><a href="artigo.html?slug=${artigo.slug}">${artigo.titulo}</a></h1>
@@ -189,10 +195,17 @@ async function carregarArtigos() {
 
 function renderCard(a) {
   const emoji = emojiCategoria(a.categoria);
+  // Usa imagemUrl (campo calculado pelo backend) ou imagemCapa
+  const imgSrc = a.imagemUrl || a.imagemCapa;
+  const imgHtml = imgSrc
+    ? `<img src="${imgSrc}" alt="${a.titulo}" class="card-img" style="object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : '';
+  const emojiHtml = `<div class="card-img" style="display:${imgSrc ? 'none' : 'flex'};align-items:center;justify-content:center;font-size:2.5rem">${emoji}</div>`;
+
   return `
     <article class="card">
       <a href="artigo.html?slug=${a.slug}">
-        <div class="card-img">${emoji}</div>
+        ${imgHtml}${emojiHtml}
       </a>
       <div class="card-body">
         <span class="tag">${a.categoria || 'Geral'}</span>

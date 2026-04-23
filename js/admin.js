@@ -583,9 +583,14 @@ function preencherForm(a) {
   document.getElementById('f-autor').value = a.autor || 'Entusiasta Tributário';
   document.getElementById('f-tags').value = a.tags || '';
   document.getElementById('f-imagem').value = a.imagemCapa || '';
-  // Mostra preview se já tem imagem
-  if (a.imagemCapa) {
-    mostrarPreview(a.imagemCapa);
+  // Limpa fileId anterior
+  delete document.getElementById('f-imagem').dataset.fileId;
+
+  // Mostra preview — prioridade: fileAttachment > imagemCapa > imagemUrl
+  const imgSrc = a.imagemUrl || a.imagemCapa ||
+    (a.fileAttachment?.id ? `${API_BASE}/api/files/download/${a.fileAttachment.id}` : null);
+  if (imgSrc) {
+    mostrarPreview(imgSrc);
   } else {
     limparPreview();
   }
@@ -612,7 +617,8 @@ async function salvarArtigo(e) {
 
   const id = document.getElementById('artigo-id').value;
   const imagemCapaRaw = document.getElementById('f-imagem').value;
-  // Nunca envia base64 para o backend — coluna VARCHAR(500) não suporta
+  const fileId = document.getElementById('f-imagem').dataset?.fileId;
+  // Nunca envia base64 para o backend
   const imagemCapa = imagemCapaRaw && !imagemCapaRaw.startsWith('data:')
     ? imagemCapaRaw
     : '';
@@ -628,6 +634,8 @@ async function salvarArtigo(e) {
     autor:            document.getElementById('f-autor').value,
     tags:             document.getElementById('f-tags').value,
     imagemCapa,
+    // Envia fileAttachment se houve upload com sucesso
+    fileAttachment:   fileId ? { id: parseInt(fileId) } : undefined,
     ordemExibicao:    parseInt(document.getElementById('f-ordem').value) || 0,
     fonte:            document.getElementById('f-fonte').value,
     publicado:        document.getElementById('f-publicado').checked,
@@ -801,7 +809,6 @@ async function uploadImagemBackend(file) {
     formData.append('file', file, file.name);
     formData.append('fileName', file.name);
     formData.append('fileType', file.type || 'image/jpeg');
-    // Campos obrigatórios pelo FileController — usa valores padrão
     formData.append('diretorio', '{"id":1}');
     formData.append('empresa',   '{"id":1}');
     formData.append('parceiro',  '{"id":1}');
@@ -809,7 +816,6 @@ async function uploadImagemBackend(file) {
     const res = await fetch(`${API_BASE}/api/files/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
-      // NÃO define Content-Type — o browser define automaticamente com boundary
       body: formData,
     });
 
@@ -818,6 +824,8 @@ async function uploadImagemBackend(file) {
     const data = await res.json();
     const fileId = data?.fileId || data?.id || data?.data?.id;
     if (fileId) {
+      // Guarda o fileId para enviar no artigo
+      document.getElementById('f-imagem').dataset.fileId = fileId;
       return `${API_BASE}/api/files/download/${fileId}`;
     }
     return data?.url || data?.fileUrl || null;
