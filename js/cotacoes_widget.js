@@ -1,0 +1,102 @@
+/**
+ * cotacoes_widget.js — Widget de cotações para a sidebar da home
+ * Carrega dados básicos de Ibovespa, moedas e cripto
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  carregarWidgetCotacoes();
+  setInterval(carregarWidgetCotacoes, 5 * 60 * 1000);
+});
+
+async function carregarWidgetCotacoes() {
+  await Promise.allSettled([
+    carregarWidgetIbov(),
+    carregarWidgetMoedas(),
+    carregarWidgetCripto(),
+  ]);
+}
+
+async function carregarWidgetIbov() {
+  try {
+    const res = await fetch('https://brapi.dev/api/quote/%5EBVSP');
+    const data = await res.json();
+    const q = data?.results?.[0];
+    if (!q) return;
+
+    const valor = q.regularMarketPrice;
+    const var_ = q.regularMarketChangePercent;
+
+    const valEl = document.getElementById('w-ibov-valor');
+    const varEl = document.getElementById('w-ibov-var');
+    const metaEl = document.getElementById('w-ibov-meta');
+
+    if (valEl) valEl.textContent = valor?.toLocaleString('pt-BR', {maximumFractionDigits: 0}) || '—';
+    if (varEl) {
+      varEl.textContent = `${var_ >= 0 ? '▲' : '▼'} ${Math.abs(var_).toFixed(2)}%`;
+      varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
+      varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
+    }
+    if (metaEl) metaEl.textContent = `Fech. ant.: ${q.regularMarketPreviousClose?.toLocaleString('pt-BR', {maximumFractionDigits: 0})} · Delay 15min`;
+  } catch (_) {}
+}
+
+async function carregarWidgetMoedas() {
+  try {
+    const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL');
+    const data = await res.json();
+
+    const moedas = [
+      { key: 'USDBRL', nome: 'Dólar 🇺🇸' },
+      { key: 'EURBRL', nome: 'Euro 🇪🇺' },
+      { key: 'GBPBRL', nome: 'Libra 🇬🇧' },
+    ];
+
+    const el = document.getElementById('w-moedas');
+    if (!el) return;
+
+    el.innerHTML = moedas.map(m => {
+      const d = data[m.key];
+      if (!d) return '';
+      const var_ = parseFloat(d.pctChange);
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--preto-borda);font-size:0.82rem">
+          <span style="font-weight:600;color:var(--laranja)">${m.nome}</span>
+          <div style="text-align:right">
+            <span>R$ ${parseFloat(d.bid).toFixed(3)}</span>
+            <span style="margin-left:6px;font-size:0.72rem;color:${var_ >= 0 ? '#22c55e' : '#ef4444'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (_) {
+    const el = document.getElementById('w-moedas');
+    if (el) el.innerHTML = '<p style="font-size:0.8rem;color:var(--cinza-texto)">Indisponível</p>';
+  }
+}
+
+async function carregarWidgetCripto() {
+  try {
+    const res = await fetch('https://brapi.dev/api/v2/crypto?coin=BTC,ETH&currency=BRL');
+    const data = await res.json();
+    const coins = data?.coins || [];
+
+    const el = document.getElementById('w-cripto');
+    if (!el) return;
+
+    el.innerHTML = coins.map(c => {
+      const var_ = c.regularMarketChangePercent || 0;
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--preto-borda);font-size:0.82rem">
+          <span style="font-weight:700;color:var(--laranja)">${c.coin}</span>
+          <div style="text-align:right">
+            <div>R$ ${c.regularMarketPrice?.toLocaleString('pt-BR', {maximumFractionDigits: 0})}</div>
+            <div style="font-size:0.72rem;color:${var_ >= 0 ? '#22c55e' : '#ef4444'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<p style="font-size:0.8rem;color:var(--cinza-texto)">Indisponível</p>';
+  } catch (_) {
+    const el = document.getElementById('w-cripto');
+    if (el) el.innerHTML = '<p style="font-size:0.8rem;color:var(--cinza-texto)">Indisponível</p>';
+  }
+}

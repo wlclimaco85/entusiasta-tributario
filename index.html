@@ -21,10 +21,11 @@
     <nav>
       <ul class="nav-links">
         <li><a href="index.html" class="active">Home</a></li>
-        <li><a href="index.html?cat=Tributário">Tributário</a></li>
-        <li><a href="index.html?cat=MEI">MEI</a></li>
-        <li><a href="index.html?cat=Empresarial">Empresarial</a></li>
-        <li><a href="index.html?cat=Reforma Tributária">Reforma</a></li>
+        <li><a href="index.html?menu=tributario">Tributário</a></li>
+        <li><a href="index.html?menu=mei">MEI</a></li>
+        <li><a href="index.html?menu=empresarial">Empresarial</a></li>
+        <li><a href="index.html?menu=reforma">Reforma</a></li>
+        <li><a href="cotacoes.html">📈 Cotações</a></li>
       </ul>
     </nav>
     <div class="header-actions" id="header-actions">
@@ -72,18 +73,57 @@
       <span id="total-artigos" style="font-size:0.8rem;color:var(--cinza-texto)"></span>
     </div>
 
-    <div class="cards-grid" id="artigos-grid">
-      <!-- Skeletons -->
-      <div class="skeleton skeleton-card"></div>
-      <div class="skeleton skeleton-card"></div>
-      <div class="skeleton skeleton-card"></div>
-      <div class="skeleton skeleton-card"></div>
-      <div class="skeleton skeleton-card"></div>
-      <div class="skeleton skeleton-card"></div>
-    </div>
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">
+      <!-- Artigos -->
+      <div>
+        <div class="cards-grid" id="artigos-grid" style="grid-template-columns:repeat(2,1fr)">
+          <div class="skeleton skeleton-card"></div>
+          <div class="skeleton skeleton-card"></div>
+          <div class="skeleton skeleton-card"></div>
+          <div class="skeleton skeleton-card"></div>
+        </div>
+        <div class="paginacao" id="paginacao"></div>
+      </div>
 
-    <!-- Paginação -->
-    <div class="paginacao" id="paginacao"></div>
+      <!-- Sidebar cotações -->
+      <aside id="sidebar-cotacoes" style="position:sticky;top:80px">
+        <div style="background:var(--preto-card);border:1px solid var(--preto-borda);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--laranja);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--preto-borda)">
+            📊 Ibovespa
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span id="w-ibov-valor" style="font-size:1.4rem;font-weight:900">—</span>
+            <span id="w-ibov-var" style="font-size:0.8rem;font-weight:700;padding:2px 8px;border-radius:4px">—</span>
+          </div>
+          <div id="w-ibov-meta" style="font-size:0.72rem;color:var(--cinza-texto)">Carregando...</div>
+        </div>
+
+        <div style="background:var(--preto-card);border:1px solid var(--preto-borda);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--laranja);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--preto-borda)">
+            💱 Moedas
+          </div>
+          <div id="w-moedas">
+            <div class="skeleton skeleton-text" style="height:20px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-text" style="height:20px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-text" style="height:20px"></div>
+          </div>
+        </div>
+
+        <div style="background:var(--preto-card);border:1px solid var(--preto-borda);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--laranja);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--preto-borda)">
+            ₿ Criptoativos
+          </div>
+          <div id="w-cripto">
+            <div class="skeleton skeleton-text" style="height:20px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-text" style="height:20px"></div>
+          </div>
+        </div>
+
+        <a href="cotacoes.html" class="btn btn-primary" style="width:100%;justify-content:center;padding:10px">
+          Ver mais cotações →
+        </a>
+      </aside>
+    </div>
   </div>
 </section>
 
@@ -101,10 +141,11 @@
       <div class="footer-col">
         <h4>Categorias</h4>
         <ul id="footer-cats">
-          <li><a href="index.html?cat=Tributário">Tributário</a></li>
-          <li><a href="index.html?cat=MEI">MEI</a></li>
-          <li><a href="index.html?cat=Empresarial">Empresarial</a></li>
-          <li><a href="index.html?cat=Reforma Tributária">Reforma Tributária</a></li>
+          <li><a href="index.html?menu=tributario">Tributário</a></li>
+          <li><a href="index.html?menu=mei">MEI</a></li>
+          <li><a href="index.html?menu=empresarial">Empresarial</a></li>
+          <li><a href="index.html?menu=reforma">Reforma Tributária</a></li>
+          <li><a href="cotacoes.html">📈 Cotações</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -125,5 +166,6 @@
 
 <script src="js/api.js"></script>
 <script src="js/home.js"></script>
+<script src="js/cotacoes_widget.js"></script>
 </body>
 </html>

@@ -4,13 +4,22 @@
 
 let paginaAtual = 0;
 let categoriaAtiva = '';
+let menuAtivo = '';
 let totalPaginas = 0;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Lê categoria da URL
+  // Lê menu e categoria da URL
   const params = new URLSearchParams(window.location.search);
+  menuAtivo = params.get('menu') || '';
   categoriaAtiva = params.get('cat') || '';
+
+  // Marca link ativo no nav
+  document.querySelectorAll('.nav-links a').forEach(a => {
+    const href = a.getAttribute('href');
+    if (menuAtivo && href && href.includes(`menu=${menuAtivo}`)) a.classList.add('active');
+    else if (!menuAtivo && href === 'index.html') a.classList.add('active');
+  });
 
   // Auth header
   atualizarHeader();
@@ -107,6 +116,7 @@ async function carregarCategorias() {
 
 function filtrarCategoria(cat) {
   categoriaAtiva = cat;
+  menuAtivo = '';
   paginaAtual = 0;
   // Atualiza botões
   document.querySelectorAll('.cat-btn').forEach(b => {
@@ -121,16 +131,28 @@ function filtrarCategoria(cat) {
 // ── Grid de artigos ───────────────────────────────────────────────────────────
 async function carregarArtigos() {
   const grid = document.getElementById('artigos-grid');
-  grid.innerHTML = Array(6).fill('<div class="skeleton skeleton-card"></div>').join('');
+  grid.innerHTML = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
 
   try {
-    const params = { pagina: paginaAtual, tamanho: 9 };
-    if (categoriaAtiva) params.categoria = categoriaAtiva;
+    let artigos = [];
+    let total = 0;
 
-    const res = await ArtigoAPI.listarPublicos(params);
-    const artigos = res?.data?.dados || [];
-    const total = res?.data?.total || 0;
-    totalPaginas = Math.ceil(total / 9);
+    if (menuAtivo) {
+      // Usa endpoint de menu
+      const res = await ArtigoAPI.porMenu(menuAtivo, 12);
+      artigos = res || [];
+      total = artigos.length;
+      totalPaginas = 1;
+    } else {
+      // Listagem geral paginada
+      const params = { pagina: paginaAtual, tamanho: 9 };
+      if (categoriaAtiva) params.categoria = categoriaAtiva;
+
+      const res = await ArtigoAPI.listarPublicos(params);
+      artigos = res?.data?.dados || [];
+      total = res?.data?.total || 0;
+      totalPaginas = Math.ceil(total / 9);
+    }
 
     document.getElementById('total-artigos').textContent = total ? `${total} artigo${total !== 1 ? 's' : ''}` : '';
 
@@ -138,14 +160,14 @@ async function carregarArtigos() {
       grid.innerHTML = `
         <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--cinza-texto)">
           <div style="font-size:3rem;margin-bottom:16px">📭</div>
-          <p>Nenhum artigo encontrado${categoriaAtiva ? ` em "${categoriaAtiva}"` : ''}.</p>
+          <p>Nenhum artigo encontrado${categoriaAtiva ? ` em "${categoriaAtiva}"` : ''}${menuAtivo ? ` no menu "${menuAtivo}"` : ''}.</p>
         </div>`;
       document.getElementById('paginacao').innerHTML = '';
       return;
     }
 
     grid.innerHTML = artigos.map(renderCard).join('');
-    renderPaginacao();
+    if (!menuAtivo) renderPaginacao();
   } catch (e) {
     grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--cinza-texto)">
       <p>Erro ao carregar artigos. Verifique se o backend está rodando.</p>

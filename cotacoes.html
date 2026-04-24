@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotações — Entusiasta Tributário</title>
+  <meta name="description" content="Acompanhe as cotações do Ibovespa, dólar, euro, Bitcoin e principais ações em tempo real.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Cotações específico ── */
+    .cotacoes-hero {
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a0f00 100%);
+      border-bottom: 2px solid var(--laranja);
+      padding: 32px 0;
+    }
+    .cotacoes-hero h1 { font-size: 1.8rem; font-weight: 900; margin-bottom: 6px; }
+    .cotacoes-hero p { color: var(--cinza-texto); font-size: 0.9rem; }
+
+    .cotacoes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      padding: 40px 0;
+    }
+    .cot-card {
+      background: var(--preto-card);
+      border: 1px solid var(--preto-borda);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color var(--transicao);
+    }
+    .cot-card:hover { border-color: var(--laranja); }
+    .cot-card-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--cinza-texto);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--preto-borda);
+    }
+
+    /* Ibovespa */
+    .ibov-valor { font-size: 2.2rem; font-weight: 900; line-height: 1; }
+    .ibov-variacao {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      margin-left: 10px;
+    }
+    .ibov-variacao.up { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .ibov-variacao.down { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .ibov-meta { font-size: 0.78rem; color: var(--cinza-texto); margin-top: 6px; }
+
+    /* Mini gráfico */
+    .mini-chart {
+      width: 100%;
+      height: 60px;
+      margin: 16px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .mini-chart svg { width: 100%; height: 100%; }
+
+    /* Maiores altas/baixas */
+    .altas-baixas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .ab-col h4 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ab-col h4.alta { color: #22c55e; }
+    .ab-col h4.baixa { color: #ef4444; }
+    .ab-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--preto-borda);
+      font-size: 0.82rem;
+    }
+    .ab-item:last-child { border-bottom: none; }
+    .ab-ticker { font-weight: 700; color: var(--laranja); }
+    .ab-pct.up { color: #22c55e; font-weight: 600; }
+    .ab-pct.down { color: #ef4444; font-weight: 600; }
+    .ab-preco { color: var(--cinza-texto); font-size: 0.78rem; }
+
+    /* Moedas */
+    .moeda-table { width: 100%; }
+    .moeda-table th {
+      font-size: 0.72rem;
+      color: var(--cinza-texto);
+      font-weight: 500;
+      text-align: right;
+      padding: 4px 0;
+    }
+    .moeda-table th:first-child { text-align: left; }
+    .moeda-table td {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--preto-borda);
+      font-size: 0.88rem;
+    }
+    .moeda-table td:first-child { font-weight: 700; color: var(--laranja); }
+    .moeda-table td:not(:first-child) { text-align: right; color: var(--cinza-texto); }
+    .moeda-table tr:last-child td { border-bottom: none; }
+
+    /* Cripto */
+    .cripto-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--preto-borda);
+    }
+    .cripto-item:last-child { border-bottom: none; }
+    .cripto-nome { font-weight: 700; color: var(--laranja); }
+    .cripto-preco { font-size: 0.9rem; color: var(--cinza-texto); }
+    .cripto-var { font-weight: 700; font-size: 0.85rem; }
+
+    /* Busca de ativo */
+    .busca-ativo {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .busca-ativo input {
+      flex: 1;
+      padding: 10px 16px;
+      background: var(--preto-card);
+      border: 1px solid var(--preto-borda);
+      border-radius: var(--radius);
+      color: var(--branco);
+      font-size: 0.9rem;
+    }
+    .busca-ativo input:focus {
+      outline: none;
+      border-color: var(--laranja);
+    }
+    .busca-ativo input::placeholder { color: #555; }
+
+    .delay-aviso {
+      font-size: 0.75rem;
+      color: var(--cinza-texto);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    /* Tabela de acoes */
+    .acoes-table-wrap { overflow-x: auto; }
+    .acoes-table { width: 100%; font-size: 0.85rem; }
+    .acoes-table th {
+      background: #1a1a1a;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--cinza-texto);
+      border-bottom: 1px solid var(--preto-borda);
+    }
+    .acoes-table th:not(:first-child) { text-align: right; }
+    .acoes-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--preto-borda);
+    }
+    .acoes-table td:not(:first-child) { text-align: right; }
+    .acoes-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .ticker-link { font-weight: 700; color: var(--laranja); }
+    .ticker-link:hover { color: var(--laranja-hover); }
+
+    @media (max-width: 1024px) {
+      .cotacoes-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 768px) {
+      .cotacoes-grid { grid-template-columns: 1fr; }
+      .altas-baixas { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">
+      <div class="logo-icon">$</div>
+      <div class="logo-text">entusiasta<br><span>tributário</span></div>
+    </a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html?cat=Tributário">Tributário</a></li>
+        <li><a href="index.html?cat=MEI">MEI</a></li>
+        <li><a href="index.html?cat=Empresarial">Empresarial</a></li>
+        <li><a href="cotacoes.html" class="active">Cotações</a></li>
+      </ul>
+    </nav>
+    <div class="header-actions">
+      <a href="admin.html" class="btn btn-primary" id="btn-admin" style="display:none">✏️ Escrever</a>
+      <a href="login.html" class="btn btn-ghost" id="btn-login">Entrar</a>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<div class="cotacoes-hero">
+  <div class="container">
+    <h1>📈 Cotações</h1>
+    <p>Ibovespa, moedas, criptoativos e principais ações — dados com delay de 15 minutos</p>
+  </div>
+</div>
+
+<!-- Busca de ativo -->
+<div class="container" style="padding-top:32px">
+  <div class="busca-ativo">
+    <input type="text" id="busca-input" placeholder="🔍 Buscar ativo ou índice (ex: PETR4, VALE3, IBOV)..." oninput="buscarAtivo()">
+    <button class="btn btn-primary" onclick="buscarAtivo()">Buscar</button>
+  </div>
+  <div id="busca-resultado" style="display:none" class="cot-card" style="margin-bottom:24px"></div>
+</div>
+
+<!-- Grid de cotações -->
+<div class="container">
+  <div class="cotacoes-grid">
+
+    <!-- Ibovespa -->
+    <div class="cot-card" style="grid-column: 1 / -1">
+      <div class="cot-card-title">📊 Ibovespa</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        <span class="ibov-valor" id="ibov-valor">—</span>
+        <span class="ibov-variacao" id="ibov-var">—</span>
+      </div>
+      <div class="ibov-meta" id="ibov-meta">Carregando...</div>
+      <div class="mini-chart" id="ibov-chart">
+        <svg viewBox="0 0 400 60" preserveAspectRatio="none">
+          <path id="ibov-path" d="" fill="rgba(224,123,0,0.1)" stroke="var(--laranja)" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="altas-baixas">
+        <div class="ab-col">
+          <h4 class="alta">▲ Maiores Altas</h4>
+          <div id="maiores-altas">
+            <div class="skeleton skeleton-text" style="height:32px;margin-bottom:4px"></div>
+            <div class="skeleton skeleton-text" style="height:32px;margin-bottom:4px"></div>
+            <div class="skeleton skeleton-text" style="height:32px;margin-bottom:4px"></div>
+          </div>
+        </div>
+        <div class="ab-col">
+          <h4 class="baixa">▼ Maiores Baixas</h4>
+          <div id="maiores-baixas">
+            <div class="skeleton skeleton-text" style="height:32px;margin-bottom:4px"></div>
+            <div class="skeleton skeleton-text" style="height:32px;margin-bottom:4px"></div>
+            <div class="skeleton skeleton-text" style="height:32px;margin-bottom:4px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="delay-aviso">⏱️ Dados com delay de 15 minutos · <span id="ibov-hora">—</span></div>
+    </div>
+
+    <!-- Moedas -->
+    <div class="cot-card">
+      <div class="cot-card-title">💱 Moedas</div>
+      <table class="moeda-table">
+        <thead>
+          <tr>
+            <th>Moeda</th>
+            <th>Compra</th>
+            <th>Venda</th>
+            <th>Var.</th>
+          </tr>
+        </thead>
+        <tbody id="moedas-tbody">
+          <tr><td colspan="4"><div class="skeleton skeleton-text"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Criptoativos -->
+    <div class="cot-card">
+      <div class="cot-card-title">₿ Criptoativos</div>
+      <div id="cripto-list">
+        <div class="skeleton skeleton-text" style="height:48px;margin-bottom:8px"></div>
+        <div class="skeleton skeleton-text" style="height:48px;margin-bottom:8px"></div>
+        <div class="skeleton skeleton-text" style="height:48px"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tabela de ações -->
+  <div style="margin-bottom:48px">
+    <div class="section-header">
+      <h2 class="section-title">Principais Ações</h2>
+      <span style="font-size:0.8rem;color:var(--cinza-texto)">Delay 15 min</span>
+    </div>
+    <div class="acoes-table-wrap">
+      <table class="acoes-table">
+        <thead>
+          <tr>
+            <th>Ativo</th>
+            <th>Último</th>
+            <th>Variação</th>
+            <th>Mín.</th>
+            <th>Máx.</th>
+            <th>Volume</th>
+          </tr>
+        </thead>
+        <tbody id="acoes-tbody">
+          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2024 Entusiasta Tributário · Dados com delay de 15 minutos</span>
+      <a href="index.html" style="color:var(--laranja)">← Voltar para Home</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/cotacoes.js"></script>
+</body>
+</html>

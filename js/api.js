@@ -64,6 +64,9 @@ const ArtigoAPI = {
   /** Categorias disponíveis */
   categorias: () => apiFetch('/api/artigos/categorias'),
 
+  /** Artigos por menu (home, tributario, mei, empresarial, reforma) */
+  porMenu: (menu, quantidade = 12) => apiFetch(`/api/artigos/menu/${menu}?quantidade=${quantidade}`),
+
   // ── Admin ──────────────────────────────────────────────────────────────────
 
   /** Listagem admin com filtros */
