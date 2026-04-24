@@ -80,6 +80,12 @@ const ArtigoAPI = {
   /** Artigo público por slug */
   buscarPorSlug: (slug) => apiFetch(`/api/artigos/publicos/${slug}`),
 
+  /** Incrementa visualizações (fire-and-forget, não bloqueia) */
+  incrementarVisualizacoes: (id) => {
+    // Chama sem await — não bloqueia o carregamento da página
+    apiFetch(`/api/artigos/${id}/visualizacoes`, { method: 'PATCH' }).catch(() => {});
+  },
+
   /** Artigos em destaque */
   destaques: () => apiFetch('/api/artigos/destaques'),
 

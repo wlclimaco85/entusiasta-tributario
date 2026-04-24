@@ -22,6 +22,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!artigo) { mostrar404(); return; }
     renderArtigo(artigo);
     carregarSidebar(artigo.categoria);
+
+    // Incrementa visualizações — fire-and-forget, não bloqueia
+    // Usa sessionStorage para não incrementar múltiplas vezes na mesma sessão
+    const chaveVista = `artigo_visto_${artigo.id}`;
+    if (!sessionStorage.getItem(chaveVista)) {
+      sessionStorage.setItem(chaveVista, '1');
+      ArtigoAPI.incrementarVisualizacoes(artigo.id);
+    }
   } catch (e) {
     mostrar404();
   }
