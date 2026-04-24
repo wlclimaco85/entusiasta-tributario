@@ -138,10 +138,19 @@ const ArtigoAPI = {
 // ── API de Auth ───────────────────────────────────────────────────────────────
 const AuthAPI = {
   // Railway backend usa { email, senha } no body
-  login: (email, senha) => apiFetch('/rest/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, senha })
-  })
+  // Resposta: { access_token, token_type, status, login, permissoes }
+  login: async (email, senha) => {
+    const res = await fetch(`${API_BASE}/rest/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${text.substring(0, 100)}`);
+    }
+    return res.json();
+  }
 };
 
 // ── Utilitários de UI ─────────────────────────────────────────────────────────

@@ -57,15 +57,29 @@
       const senha = document.getElementById('senha').value;
       const res = await AuthAPI.login(email, senha);
 
-      if (res?.data?.token || res?.token) {
-        const token = res?.data?.token || res?.token;
-        // Extrai usuário de diferentes formatos de resposta
-        const user = res?.data?.login || res?.data?.user || res?.login || res?.user || { email };
+      // Extrai token de qualquer formato de resposta do backend
+      // Formato Railway: { access_token, token_type, login, permissoes }
+      // Formato alternativo: { data: { token }, token }
+      const token = res?.access_token
+        || res?.token
+        || res?.data?.token
+        || res?.data?.access_token;
+
+      if (token) {
         Auth.setToken(token);
+
+        // Salva dados do usuário
+        const user = res?.login || res?.data?.login || res?.user || res?.data?.user || { email };
         Auth.setUser(user);
+
+        // Salva permissões se existirem
+        if (res?.permissoes) {
+          localStorage.setItem('et_permissoes', JSON.stringify(res.permissoes));
+        }
+
         window.location.href = 'admin.html';
       } else {
-        throw new Error('Credenciais inválidas');
+        throw new Error('Token não encontrado na resposta');
       }
     } catch (err) {
       errEl.textContent = 'E-mail ou senha incorretos. Verifique suas credenciais.';
