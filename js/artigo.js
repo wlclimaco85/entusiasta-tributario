@@ -79,28 +79,33 @@ function renderArtigo(a) {
 async function carregarSidebar(categoriaAtual) {
   try {
     const [ultimos, cats] = await Promise.all([
-      ArtigoAPI.ultimos(5),
-      ArtigoAPI.categorias()
+      ArtigoAPI.ultimos(5).catch(() => []),
+      ArtigoAPI.categorias().catch(() => []),
     ]);
 
     // Artigos relacionados
     const sidebarArtigos = document.getElementById('sidebar-artigos');
-    const relacionados = (ultimos || []).filter(a => a.slug !== new URLSearchParams(window.location.search).get('slug')).slice(0, 4);
-    sidebarArtigos.innerHTML = relacionados.map(a => `
-      <div class="card-mini" style="padding:10px 0">
-        <div class="card-mini-img" style="width:56px;height:44px;font-size:1.2rem">${emojiCategoria(a.categoria)}</div>
-        <div class="card-mini-body">
-          <h3 style="font-size:0.8rem"><a href="artigo.html?slug=${a.slug}">${a.titulo}</a></h3>
-          <div class="card-mini-meta">${formatarDataCurta(a.dataPublicacao)}</div>
-        </div>
-      </div>
-    `).join('') || '<p style="font-size:0.8rem;color:var(--cinza-texto)">Nenhum artigo relacionado.</p>';
+    const slug = new URLSearchParams(window.location.search).get('slug');
+    const relacionados = (ultimos || []).filter(a => a.slug !== slug).slice(0, 4);
+    sidebarArtigos.innerHTML = relacionados.length
+      ? relacionados.map(a => `
+          <div class="card-mini" style="padding:10px 0">
+            <div class="card-mini-img" style="width:56px;height:44px;font-size:1.2rem">${emojiCategoria(a.categoria)}</div>
+            <div class="card-mini-body">
+              <h3 style="font-size:0.8rem"><a href="artigo.html?slug=${a.slug}">${a.titulo}</a></h3>
+              <div class="card-mini-meta">${formatarDataCurta(a.dataPublicacao)}</div>
+            </div>
+          </div>
+        `).join('')
+      : '<p style="font-size:0.8rem;color:var(--cinza-texto)">Nenhum artigo relacionado.</p>';
 
     // Categorias
     const sidebarCats = document.getElementById('sidebar-cats');
-    sidebarCats.innerHTML = (cats || []).map(c =>
-      `<a href="index.html?cat=${encodeURIComponent(c)}" class="tag outline" style="margin:2px">${emojiCategoria(c)} ${c}</a>`
-    ).join('');
+    sidebarCats.innerHTML = (cats || []).length
+      ? (cats || []).map(c =>
+          `<a href="index.html?cat=${encodeURIComponent(c)}" class="tag outline" style="margin:2px">${emojiCategoria(c)} ${c}</a>`
+        ).join('')
+      : '<p style="font-size:0.8rem;color:var(--cinza-texto)">Sem categorias.</p>';
   } catch (_) {}
 }
 

@@ -1,17 +1,10 @@
 /**
  * cotacoes.js — Página de cotações
- * Usa a API pública do Brapi (https://brapi.dev) — gratuita, sem chave necessária
- * para dados básicos. Dados com delay de 15 minutos.
+ * APIs usadas (todas gratuitas, sem token):
+ *  - AwesomeAPI: câmbio (USD, EUR, GBP, ARS, JPY)
+ *  - CoinGecko: criptoativos (BTC, ETH, SOL, BNB, ADA)
+ *  - Dados simulados para Ibovespa (APIs de bolsa BR exigem token)
  */
-
-const BRAPI = 'https://brapi.dev/api';
-
-// Ações para exibir na tabela
-const ACOES_LISTA = [
-  'PETR4','VALE3','ITUB4','BBDC4','ABEV3',
-  'WEGE3','RENT3','MGLU3','LREN3','BBAS3',
-  'SUZB3','GGBR4','CSNA3','USIM5','CSAN3'
-];
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   carregarTudo();
-  // Atualiza a cada 5 minutos
   setInterval(carregarTudo, 5 * 60 * 1000);
 });
 
@@ -37,55 +29,59 @@ async function carregarTudo() {
   ]);
 }
 
-// ── Ibovespa ──────────────────────────────────────────────────────────────────
+// ── Ibovespa (dados simulados — APIs BR exigem token) ─────────────────────────
 async function carregarIbovespa() {
+  // Tenta buscar via Yahoo Finance proxy (sem CORS issues)
   try {
-    const res = await fetch(`${BRAPI}/quote/%5EBVSP?range=1d&interval=30m`);
+    const res = await fetch(
+      'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=30m&range=1d',
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!res.ok) throw new Error('Yahoo indisponível');
     const data = await res.json();
-    const q = data?.results?.[0];
-    if (!q) return;
+    const meta = data?.chart?.result?.[0]?.meta;
+    const timestamps = data?.chart?.result?.[0]?.timestamp || [];
+    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
 
-    const valor = q.regularMarketPrice;
-    const variacao = q.regularMarketChangePercent;
-    const anterior = q.regularMarketPreviousClose;
-    const abertura = q.regularMarketOpen;
+    if (meta) {
+      const valor = meta.regularMarketPrice;
+      const anterior = meta.chartPreviousClose || meta.previousClose;
+      const variacao = anterior ? ((valor - anterior) / anterior) * 100 : 0;
 
-    document.getElementById('ibov-valor').textContent = formatarNumero(valor);
-    const varEl = document.getElementById('ibov-var');
-    varEl.textContent = `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(2)}%`;
-    varEl.className = `ibov-variacao ${variacao >= 0 ? 'up' : 'down'}`;
-    document.getElementById('ibov-meta').textContent =
-      `Fechamento anterior: ${formatarNumero(anterior)} · Abertura: ${formatarNumero(abertura)}`;
-    document.getElementById('ibov-hora').textContent =
-      `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} · Delay 15 min`;
+      document.getElementById('ibov-valor').textContent = formatarNumero(valor);
+      const varEl = document.getElementById('ibov-var');
+      varEl.textContent = `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(2)}%`;
+      varEl.className = `ibov-variacao ${variacao >= 0 ? 'up' : 'down'}`;
+      document.getElementById('ibov-meta').textContent =
+        `Fechamento anterior: ${formatarNumero(anterior)} · Abertura: ${formatarNumero(meta.regularMarketOpen || anterior)}`;
+      document.getElementById('ibov-hora').textContent =
+        `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
 
-    // Mini gráfico
-    const historico = q.historicalDataPrice || [];
-    if (historico.length > 1) {
-      renderMiniChart(historico.map(h => h.close || h.regularMarketPrice));
+      // Mini gráfico
+      const precos = closes.filter(Boolean);
+      if (precos.length > 1) renderMiniChart(precos, variacao < 0);
     }
-
-    // Maiores altas e baixas (simulado com dados reais do Ibovespa)
-    await carregarAltasBaixas();
-  } catch (e) {
+  } catch (_) {
+    // Fallback: exibe mensagem amigável
     document.getElementById('ibov-valor').textContent = 'Indisponível';
-    document.getElementById('ibov-meta').textContent = 'Erro ao carregar dados. Tente novamente.';
+    document.getElementById('ibov-meta').textContent =
+      'Dados do Ibovespa indisponíveis no momento. Tente novamente mais tarde.';
   }
+
+  // Maiores altas/baixas via Yahoo (ações do Ibovespa)
+  await carregarAltasBaixas();
 }
 
-function renderMiniChart(precos) {
-  if (!precos || precos.length < 2) return;
+function renderMiniChart(precos, isDown) {
   const min = Math.min(...precos);
   const max = Math.max(...precos);
   const range = max - min || 1;
-  const w = 400;
-  const h = 60;
+  const w = 400, h = 60;
   const pts = precos.map((p, i) => {
     const x = (i / (precos.length - 1)) * w;
     const y = h - ((p - min) / range) * (h - 4) - 2;
     return `${x},${y}`;
   });
-  const isDown = precos[precos.length - 1] < precos[0];
   const color = isDown ? '#ef4444' : '#e07b00';
   const fillColor = isDown ? 'rgba(239,68,68,0.1)' : 'rgba(224,123,0,0.1)';
   const path = `M ${pts.join(' L ')} L ${w},${h} L 0,${h} Z`;
@@ -98,41 +94,58 @@ function renderMiniChart(precos) {
 }
 
 async function carregarAltasBaixas() {
+  // Ações do Ibovespa via Yahoo Finance
+  const tickers = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'ABEV3.SA',
+                   'WEGE3.SA', 'RENT3.SA', 'MGLU3.SA', 'LREN3.SA', 'BBAS3.SA'];
   try {
-    // Busca as principais ações do Ibovespa
-    const tickers = 'PETR4,VALE3,ITUB4,BBDC4,ABEV3,WEGE3,RENT3,MGLU3,LREN3,BBAS3';
-    const res = await fetch(`${BRAPI}/quote/${tickers}`);
-    const data = await res.json();
-    const acoes = (data?.results || [])
-      .filter(a => a.regularMarketChangePercent != null)
-      .sort((a, b) => b.regularMarketChangePercent - a.regularMarketChangePercent);
+    const promises = tickers.map(t =>
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`)
+        .then(r => r.json())
+        .then(d => {
+          const meta = d?.chart?.result?.[0]?.meta;
+          if (!meta) return null;
+          const var_ = meta.chartPreviousClose
+            ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+            : 0;
+          return { symbol: t.replace('.SA', ''), price: meta.regularMarketPrice, change: var_ };
+        })
+        .catch(() => null)
+    );
 
-    const altas = acoes.slice(0, 5);
-    const baixas = [...acoes].sort((a, b) => a.regularMarketChangePercent - b.regularMarketChangePercent).slice(0, 5);
+    const resultados = (await Promise.all(promises)).filter(Boolean);
+    const sorted = [...resultados].sort((a, b) => b.change - a.change);
+    const altas = sorted.slice(0, 5);
+    const baixas = [...sorted].reverse().slice(0, 5);
 
     document.getElementById('maiores-altas').innerHTML = altas.map(a => `
       <div class="ab-item">
         <span class="ab-ticker">${a.symbol}</span>
-        <span class="ab-pct up">+${a.regularMarketChangePercent.toFixed(2)}%</span>
-        <span class="ab-preco">R$ ${a.regularMarketPrice?.toFixed(2)}</span>
+        <span class="ab-pct up">+${a.change.toFixed(2)}%</span>
+        <span class="ab-preco">R$ ${a.price?.toFixed(2)}</span>
       </div>
     `).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Sem dados</p>';
 
     document.getElementById('maiores-baixas').innerHTML = baixas.map(a => `
       <div class="ab-item">
         <span class="ab-ticker">${a.symbol}</span>
-        <span class="ab-pct down">${a.regularMarketChangePercent.toFixed(2)}%</span>
-        <span class="ab-preco">R$ ${a.regularMarketPrice?.toFixed(2)}</span>
+        <span class="ab-pct down">${a.change.toFixed(2)}%</span>
+        <span class="ab-preco">R$ ${a.price?.toFixed(2)}</span>
       </div>
     `).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Sem dados</p>';
-  } catch (_) {}
+  } catch (_) {
+    document.getElementById('maiores-altas').innerHTML =
+      '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
+    document.getElementById('maiores-baixas').innerHTML =
+      '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
+  }
 }
 
-// ── Moedas ────────────────────────────────────────────────────────────────────
+// ── Moedas — AwesomeAPI (gratuita, sem token) ─────────────────────────────────
 async function carregarMoedas() {
   try {
     const pares = 'USD-BRL,EUR-BRL,GBP-BRL,ARS-BRL,JPY-BRL';
     const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${pares}`);
+    if (!res.ok) throw new Error('AwesomeAPI indisponível');
     const data = await res.json();
 
     const moedas = [
@@ -156,47 +169,87 @@ async function carregarMoedas() {
         </tr>
       `;
     }).join('');
-  } catch (e) {
+  } catch (_) {
     document.getElementById('moedas-tbody').innerHTML =
-      '<tr><td colspan="4" style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</td></tr>';
+      '<tr><td colspan="4" style="color:var(--cinza-texto);font-size:0.8rem;padding:12px">Dados indisponíveis</td></tr>';
   }
 }
 
-// ── Criptoativos ──────────────────────────────────────────────────────────────
+// ── Criptoativos — CoinGecko (gratuito, sem token) ────────────────────────────
 async function carregarCripto() {
   try {
-    const res = await fetch(`${BRAPI}/v2/crypto?coin=BTC,ETH,SOL,BNB,ADA&currency=BRL`);
+    // CoinGecko API v3 — sem autenticação para uso básico
+    const ids = 'bitcoin,ethereum,solana,binancecoin,cardano';
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=brl&include_24hr_change=true`
+    );
+    if (!res.ok) throw new Error('CoinGecko indisponível');
     const data = await res.json();
-    const coins = data?.coins || [];
+
+    const coins = [
+      { id: 'bitcoin',      symbol: 'BTC', nome: 'Bitcoin' },
+      { id: 'ethereum',     symbol: 'ETH', nome: 'Ethereum' },
+      { id: 'solana',       symbol: 'SOL', nome: 'Solana' },
+      { id: 'binancecoin',  symbol: 'BNB', nome: 'BNB' },
+      { id: 'cardano',      symbol: 'ADA', nome: 'Cardano' },
+    ];
 
     document.getElementById('cripto-list').innerHTML = coins.map(c => {
-      const var_ = c.regularMarketChangePercent || 0;
+      const d = data[c.id];
+      if (!d) return '';
+      const preco = d.brl;
+      const var_ = d.brl_24h_change || 0;
       return `
         <div class="cripto-item">
           <div>
-            <div class="cripto-nome">${c.coin}</div>
-            <div style="font-size:0.75rem;color:var(--cinza-texto)">${c.coinName || ''}</div>
+            <div class="cripto-nome">${c.symbol}</div>
+            <div style="font-size:0.75rem;color:var(--cinza-texto)">${c.nome}</div>
           </div>
           <div style="text-align:right">
-            <div class="cripto-preco">R$ ${formatarNumero(c.regularMarketPrice)}</div>
+            <div class="cripto-preco">R$ ${formatarNumero(preco)}</div>
             <div class="cripto-var ${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
           </div>
         </div>
       `;
     }).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
-  } catch (e) {
+  } catch (_) {
     document.getElementById('cripto-list').innerHTML =
       '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
   }
 }
 
-// ── Tabela de ações ───────────────────────────────────────────────────────────
+// ── Tabela de ações — Yahoo Finance ───────────────────────────────────────────
 async function carregarAcoes() {
+  const tickers = [
+    'PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA',
+    'WEGE3.SA','RENT3.SA','MGLU3.SA','LREN3.SA','BBAS3.SA',
+    'SUZB3.SA','GGBR4.SA','CSNA3.SA','USIM5.SA','CSAN3.SA'
+  ];
+
   try {
-    const tickers = ACOES_LISTA.join(',');
-    const res = await fetch(`${BRAPI}/quote/${tickers}`);
-    const data = await res.json();
-    const acoes = data?.results || [];
+    const promises = tickers.map(t =>
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`)
+        .then(r => r.json())
+        .then(d => {
+          const meta = d?.chart?.result?.[0]?.meta;
+          if (!meta) return null;
+          const var_ = meta.chartPreviousClose
+            ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+            : 0;
+          return {
+            symbol: t.replace('.SA', ''),
+            name: meta.shortName || '',
+            price: meta.regularMarketPrice,
+            change: var_,
+            low: meta.regularMarketDayLow,
+            high: meta.regularMarketDayHigh,
+            volume: meta.regularMarketVolume,
+          };
+        })
+        .catch(() => null)
+    );
+
+    const acoes = (await Promise.all(promises)).filter(Boolean);
 
     if (!acoes.length) {
       document.getElementById('acoes-tbody').innerHTML =
@@ -204,24 +257,20 @@ async function carregarAcoes() {
       return;
     }
 
-    document.getElementById('acoes-tbody').innerHTML = acoes.map(a => {
-      const var_ = a.regularMarketChangePercent || 0;
-      const vol = a.regularMarketVolume;
-      return `
-        <tr>
-          <td>
-            <a href="https://www.infomoney.com.br/cotacoes/b3/acao/${a.symbol.toLowerCase()}/" target="_blank" rel="noopener" class="ticker-link">${a.symbol}</a>
-            <div style="font-size:0.72rem;color:var(--cinza-texto)">${a.shortName || ''}</div>
-          </td>
-          <td>R$ ${a.regularMarketPrice?.toFixed(2) || '—'}</td>
-          <td class="${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</td>
-          <td style="color:var(--cinza-texto)">R$ ${a.regularMarketDayLow?.toFixed(2) || '—'}</td>
-          <td style="color:var(--cinza-texto)">R$ ${a.regularMarketDayHigh?.toFixed(2) || '—'}</td>
-          <td style="color:var(--cinza-texto)">${vol ? formatarVolume(vol) : '—'}</td>
-        </tr>
-      `;
-    }).join('');
-  } catch (e) {
+    document.getElementById('acoes-tbody').innerHTML = acoes.map(a => `
+      <tr>
+        <td>
+          <span class="ticker-link">${a.symbol}</span>
+          <div style="font-size:0.72rem;color:var(--cinza-texto)">${a.name}</div>
+        </td>
+        <td>R$ ${a.price?.toFixed(2) || '—'}</td>
+        <td class="${a.change >= 0 ? 'ab-pct up' : 'ab-pct down'}">${a.change >= 0 ? '+' : ''}${a.change.toFixed(2)}%</td>
+        <td style="color:var(--cinza-texto)">R$ ${a.low?.toFixed(2) || '—'}</td>
+        <td style="color:var(--cinza-texto)">R$ ${a.high?.toFixed(2) || '—'}</td>
+        <td style="color:var(--cinza-texto)">${a.volume ? formatarVolume(a.volume) : '—'}</td>
+      </tr>
+    `).join('');
+  } catch (_) {
     document.getElementById('acoes-tbody').innerHTML =
       '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Erro ao carregar dados</td></tr>';
   }
@@ -237,33 +286,40 @@ async function buscarAtivo() {
 
   buscaTimeout = setTimeout(async () => {
     try {
-      const res = await fetch(`${BRAPI}/quote/${q}`);
+      // Tenta com sufixo .SA (ações brasileiras) e sem sufixo
+      const ticker = q.endsWith('.SA') ? q : `${q}.SA`;
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`
+      );
       const data = await res.json();
-      const a = data?.results?.[0];
-      if (!a) { resultEl.style.display = 'none'; return; }
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta) { resultEl.style.display = 'none'; return; }
 
-      const var_ = a.regularMarketChangePercent || 0;
+      const var_ = meta.chartPreviousClose
+        ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+        : 0;
+
       resultEl.style.display = 'block';
       resultEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
           <div>
-            <div style="font-size:1.2rem;font-weight:800;color:var(--laranja)">${a.symbol}</div>
-            <div style="font-size:0.85rem;color:var(--cinza-texto)">${a.longName || a.shortName || ''}</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--laranja)">${q}</div>
+            <div style="font-size:0.85rem;color:var(--cinza-texto)">${meta.shortName || meta.longName || ''}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:1.8rem;font-weight:900">R$ ${a.regularMarketPrice?.toFixed(2)}</div>
+            <div style="font-size:1.8rem;font-weight:900">R$ ${meta.regularMarketPrice?.toFixed(2)}</div>
             <div class="${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}" style="font-size:1rem">
               ${var_ >= 0 ? '▲' : '▼'} ${Math.abs(var_).toFixed(2)}%
             </div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;font-size:0.82rem">
-          <div><span style="color:var(--cinza-texto)">Abertura</span><br>R$ ${a.regularMarketOpen?.toFixed(2) || '—'}</div>
-          <div><span style="color:var(--cinza-texto)">Mín. dia</span><br>R$ ${a.regularMarketDayLow?.toFixed(2) || '—'}</div>
-          <div><span style="color:var(--cinza-texto)">Máx. dia</span><br>R$ ${a.regularMarketDayHigh?.toFixed(2) || '—'}</div>
-          <div><span style="color:var(--cinza-texto)">Fech. ant.</span><br>R$ ${a.regularMarketPreviousClose?.toFixed(2) || '—'}</div>
-          <div><span style="color:var(--cinza-texto)">Volume</span><br>${a.regularMarketVolume ? formatarVolume(a.regularMarketVolume) : '—'}</div>
-          <div><span style="color:var(--cinza-texto)">Mercado</span><br>${a.exchange || '—'}</div>
+          <div><span style="color:var(--cinza-texto)">Abertura</span><br>R$ ${meta.regularMarketOpen?.toFixed(2) || '—'}</div>
+          <div><span style="color:var(--cinza-texto)">Mín. dia</span><br>R$ ${meta.regularMarketDayLow?.toFixed(2) || '—'}</div>
+          <div><span style="color:var(--cinza-texto)">Máx. dia</span><br>R$ ${meta.regularMarketDayHigh?.toFixed(2) || '—'}</div>
+          <div><span style="color:var(--cinza-texto)">Fech. ant.</span><br>R$ ${meta.chartPreviousClose?.toFixed(2) || '—'}</div>
+          <div><span style="color:var(--cinza-texto)">Volume</span><br>${meta.regularMarketVolume ? formatarVolume(meta.regularMarketVolume) : '—'}</div>
+          <div><span style="color:var(--cinza-texto)">Mercado</span><br>${meta.exchangeName || '—'}</div>
         </div>
       `;
     } catch (_) { resultEl.style.display = 'none'; }
@@ -272,7 +328,7 @@ async function buscarAtivo() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatarNumero(n) {
-  if (!n) return '—';
+  if (!n && n !== 0) return '—';
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 

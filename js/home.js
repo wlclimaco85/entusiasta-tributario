@@ -47,18 +47,29 @@ function atualizarHeader() {
 // ── Hero ──────────────────────────────────────────────────────────────────────
 async function carregarHero() {
   try {
-    const destaques = await ArtigoAPI.destaques();
-    const ultimos = await ArtigoAPI.ultimos(5);
+    const [destaques, ultimos] = await Promise.all([
+      ArtigoAPI.destaques().catch(() => []),
+      ArtigoAPI.ultimos(5).catch(() => []),
+    ]);
 
-    // Artigo principal
-    const principal = destaques[0] || ultimos[0];
-    if (principal) renderHeroPrincipal(principal);
+    const principal = (destaques || [])[0] || (ultimos || [])[0];
+    if (principal) {
+      renderHeroPrincipal(principal);
+    } else {
+      // Fallback: hero vazio com mensagem
+      document.getElementById('hero-main').innerHTML = `
+        <div style="background:var(--preto-card);border-radius:var(--radius);padding:40px;text-align:center;min-height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+          <div style="font-size:3rem">📰</div>
+          <p style="color:var(--cinza-texto)">Nenhum artigo em destaque ainda.</p>
+          ${Auth.isLoggedIn() ? '<a href="admin.html" class="btn btn-primary" style="margin-top:8px">+ Criar primeiro artigo</a>' : ''}
+        </div>`;
+    }
 
-    // Sidebar
     const sidebar = (ultimos || []).slice(0, 4);
     renderHeroSidebar(sidebar);
   } catch (e) {
-    document.getElementById('hero-main').innerHTML = '<p style="color:var(--cinza-texto);padding:20px">Erro ao carregar destaques.</p>';
+    document.getElementById('hero-main').innerHTML =
+      '<p style="color:var(--cinza-texto);padding:20px">Erro ao carregar destaques.</p>';
   }
 }
 
@@ -99,7 +110,8 @@ function renderHeroSidebar(artigos) {
 // ── Categorias ────────────────────────────────────────────────────────────────
 async function carregarCategorias() {
   try {
-    const cats = await ArtigoAPI.categorias();
+    const cats = await ArtigoAPI.categorias().catch(() => []);
+    if (!cats || !cats.length) return; // Sem categorias ainda — não quebra
     const bar = document.getElementById('categorias-bar');
     cats.forEach(cat => {
       const btn = document.createElement('button');
@@ -109,7 +121,6 @@ async function carregarCategorias() {
       btn.onclick = () => filtrarCategoria(cat);
       bar.appendChild(btn);
     });
-    // Marca "Todos" como ativo se sem categoria
     if (!categoriaAtiva) bar.querySelector('[data-cat=""]').classList.add('active');
   } catch (_) {}
 }

@@ -32,18 +32,40 @@ async function apiFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
-    Auth.logout();
-    return null;
+    if (res.status === 401) {
+      // Só faz logout se for rota autenticada (não pública)
+      if (!path.includes('/publicos') && !path.includes('/destaques') &&
+          !path.includes('/ultimos') && !path.includes('/categorias') &&
+          !path.includes('/menu/') && !path.includes('/rest/auth/')) {
+        Auth.logout();
+      }
+      return null;
+    }
+
+    if (res.status === 204) return null;
+
+    // Tenta parsear JSON — se falhar, retorna null graciosamente
+    const text = await res.text();
+    if (!text || text.trim() === '') return null;
+
+    try {
+      const json = JSON.parse(text);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${json?.message || json?.error || text.substring(0, 100)}`);
+      }
+      return json;
+    } catch (parseErr) {
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.substring(0, 100)}`);
+      return null;
+    }
+  } catch (networkErr) {
+    // Erro de rede (CORS, offline, etc.)
+    if (networkErr.message?.includes('HTTP ')) throw networkErr;
+    throw new Error(`Erro de conexão: ${networkErr.message}`);
   }
-  if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText);
-    throw new Error(`HTTP ${res.status}: ${err}`);
-  }
-  if (res.status === 204) return null;
-  return res.json();
 }
 
 // ── API de Artigos ────────────────────────────────────────────────────────────

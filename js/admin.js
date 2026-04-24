@@ -47,10 +47,15 @@ async function carregarTodosArtigos() {
   try {
     const res = await ArtigoAPI.listar({ pagina: 0, tamanho: 500 });
     todosArtigos = res?.data?.dados || [];
-    document.getElementById('grid-total').textContent =
+    const totalEl = document.getElementById('grid-total');
+    if (totalEl) totalEl.textContent =
       `${todosArtigos.length} artigo${todosArtigos.length !== 1 ? 's' : ''}`;
   } catch (e) {
-    toast('Erro ao carregar artigos: ' + e.message, 'error');
+    // Tabela pode não existir no Railway ainda
+    todosArtigos = [];
+    const totalEl = document.getElementById('grid-total');
+    if (totalEl) totalEl.textContent = 'Backend indisponível';
+    console.warn('Erro ao carregar artigos:', e.message);
   }
 }
 
@@ -272,6 +277,58 @@ function renderGrid() {
     gridInstance.destroy();
     gridInstance = null;
     container.innerHTML = '';
+  }
+
+  // Se não há artigos, mostra aviso de setup
+  if (todosArtigos.length === 0) {
+    container.innerHTML = `
+      <div style="background:rgba(224,123,0,0.08);border:1px solid rgba(224,123,0,0.3);border-radius:var(--radius);padding:24px;margin-bottom:16px">
+        <h3 style="color:var(--laranja);margin-bottom:8px">⚠️ Tabela de artigos não encontrada no banco</h3>
+        <p style="color:var(--cinza-texto);font-size:0.9rem;margin-bottom:12px">
+          A tabela <code style="background:#1a1a1a;padding:2px 6px;border-radius:4px">artigo</code> não existe no banco de dados do Railway.
+          Execute o script SQL abaixo no console do Railway para criar a tabela e inserir artigos de exemplo.
+        </p>
+        <details style="margin-bottom:12px">
+          <summary style="cursor:pointer;color:var(--laranja);font-weight:600">📋 Ver script SQL (clique para expandir)</summary>
+          <pre style="background:#0a0a0a;border:1px solid var(--preto-borda);border-radius:6px;padding:16px;margin-top:12px;font-size:0.75rem;overflow-x:auto;color:#e0e0e0;white-space:pre-wrap">-- Execute no Railway → seu banco → Query
+-- Ou baixe o arquivo setup_railway.sql do projeto
+
+CREATE TABLE IF NOT EXISTS public.artigo (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(300) NOT NULL,
+    subtitulo VARCHAR(500),
+    resumo TEXT,
+    conteudo_completo TEXT,
+    autor VARCHAR(150),
+    categoria VARCHAR(100),
+    tags VARCHAR(500),
+    imagem_capa VARCHAR(500),
+    slug VARCHAR(300) UNIQUE,
+    fonte VARCHAR(300),
+    link_fonte VARCHAR(500),
+    ordem_exibicao INTEGER NOT NULL DEFAULT 0,
+    destaque BOOLEAN NOT NULL DEFAULT FALSE,
+    publicado BOOLEAN NOT NULL DEFAULT FALSE,
+    tempo_leitura_min INTEGER,
+    visualizacoes BIGINT NOT NULL DEFAULT 0,
+    data_publicacao TIMESTAMP WITHOUT TIME ZONE,
+    cod_app INTEGER,
+    menu_categorias VARCHAR(300) DEFAULT 'home',
+    empresa_id INTEGER,
+    parceiro_id INTEGER,
+    app_id INTEGER,
+    user_logado_id INTEGER,
+    dh_created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    dh_updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);</pre>
+        </details>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="carregarTodosArtigos().then(renderGrid)">🔄 Tentar novamente</button>
+          <button class="btn btn-ghost" onclick="abrirModalNovo()">✏️ Criar artigo manualmente</button>
+        </div>
+      </div>
+    `;
+    return;
   }
 
   gridInstance = new gridjs.Grid({

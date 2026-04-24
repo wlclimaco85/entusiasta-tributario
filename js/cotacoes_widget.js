@@ -1,6 +1,7 @@
 /**
  * cotacoes_widget.js — Widget de cotações para a sidebar da home
- * Carrega dados básicos de Ibovespa, moedas e cripto
+ * APIs: AwesomeAPI (câmbio) + CoinGecko (cripto) + Yahoo Finance (Ibovespa)
+ * Todas gratuitas, sem token necessário.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,33 +17,45 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
+// ── Ibovespa via Yahoo Finance ────────────────────────────────────────────────
 async function carregarWidgetIbov() {
   try {
-    const res = await fetch('https://brapi.dev/api/quote/%5EBVSP');
+    const res = await fetch(
+      'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d'
+    );
+    if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const q = data?.results?.[0];
-    if (!q) return;
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta) throw new Error('sem dados');
 
-    const valor = q.regularMarketPrice;
-    const var_ = q.regularMarketChangePercent;
+    const valor = meta.regularMarketPrice;
+    const anterior = meta.chartPreviousClose || meta.previousClose;
+    const var_ = anterior ? ((valor - anterior) / anterior) * 100 : 0;
 
     const valEl = document.getElementById('w-ibov-valor');
     const varEl = document.getElementById('w-ibov-var');
     const metaEl = document.getElementById('w-ibov-meta');
 
-    if (valEl) valEl.textContent = valor?.toLocaleString('pt-BR', {maximumFractionDigits: 0}) || '—';
+    if (valEl) valEl.textContent = valor?.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) || '—';
     if (varEl) {
       varEl.textContent = `${var_ >= 0 ? '▲' : '▼'} ${Math.abs(var_).toFixed(2)}%`;
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
       varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
     }
-    if (metaEl) metaEl.textContent = `Fech. ant.: ${q.regularMarketPreviousClose?.toLocaleString('pt-BR', {maximumFractionDigits: 0})} · Delay 15min`;
-  } catch (_) {}
+    if (metaEl) metaEl.textContent = `Fech. ant.: ${anterior?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
+  } catch (_) {
+    const valEl = document.getElementById('w-ibov-valor');
+    const metaEl = document.getElementById('w-ibov-meta');
+    if (valEl) valEl.textContent = '—';
+    if (metaEl) metaEl.textContent = 'Dados indisponíveis';
+  }
 }
 
+// ── Moedas via AwesomeAPI (sem token) ─────────────────────────────────────────
 async function carregarWidgetMoedas() {
   try {
     const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL');
+    if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
 
     const moedas = [
@@ -74,22 +87,32 @@ async function carregarWidgetMoedas() {
   }
 }
 
+// ── Cripto via CoinGecko (sem token) ──────────────────────────────────────────
 async function carregarWidgetCripto() {
   try {
-    const res = await fetch('https://brapi.dev/api/v2/crypto?coin=BTC,ETH&currency=BRL');
+    const res = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl&include_24hr_change=true'
+    );
+    if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const coins = data?.coins || [];
+
+    const coins = [
+      { id: 'bitcoin',  symbol: 'BTC' },
+      { id: 'ethereum', symbol: 'ETH' },
+    ];
 
     const el = document.getElementById('w-cripto');
     if (!el) return;
 
     el.innerHTML = coins.map(c => {
-      const var_ = c.regularMarketChangePercent || 0;
+      const d = data[c.id];
+      if (!d) return '';
+      const var_ = d.brl_24h_change || 0;
       return `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--preto-borda);font-size:0.82rem">
-          <span style="font-weight:700;color:var(--laranja)">${c.coin}</span>
+          <span style="font-weight:700;color:var(--laranja)">${c.symbol}</span>
           <div style="text-align:right">
-            <div>R$ ${c.regularMarketPrice?.toLocaleString('pt-BR', {maximumFractionDigits: 0})}</div>
+            <div>R$ ${d.brl?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
             <div style="font-size:0.72rem;color:${var_ >= 0 ? '#22c55e' : '#ef4444'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
           </div>
         </div>
