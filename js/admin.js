@@ -567,6 +567,8 @@ function limparForm() {
   // Fecha preview se aberto
   document.getElementById('preview-area').style.display = 'none';
   document.getElementById('f-conteudo').style.display = 'block';
+  // Limpa imagem
+  limparPreview();
 }
 
 function preencherForm(a) {
@@ -581,6 +583,12 @@ function preencherForm(a) {
   document.getElementById('f-autor').value = a.autor || 'Entusiasta Tributário';
   document.getElementById('f-tags').value = a.tags || '';
   document.getElementById('f-imagem').value = a.imagemCapa || '';
+  // Mostra preview se já tem imagem
+  if (a.imagemCapa) {
+    mostrarPreview(a.imagemCapa);
+  } else {
+    limparPreview();
+  }
   document.getElementById('f-ordem').value = a.ordemExibicao ?? 0;
   document.getElementById('f-fonte').value = a.fonte || '';
   document.getElementById('f-publicado').checked = a.publicado;
@@ -692,4 +700,140 @@ function togglePreview() {
 function truncar(str, max) {
   if (!str) return '';
   return str.length > max ? str.substring(0, max) + '…' : str;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UPLOAD DE IMAGEM LOCAL
+// Converte para Base64 e salva no campo f-imagem como data URL,
+// OU faz upload para o backend e salva a URL retornada.
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** Drag over — destaca a área */
+function imgDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('img-drop-area').classList.add('drag-over');
+}
+
+/** Drag leave — remove destaque */
+function imgDragLeave(e) {
+  e.preventDefault();
+  document.getElementById('img-drop-area').classList.remove('drag-over');
+}
+
+/** Drop de arquivo */
+function imgDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('img-drop-area').classList.remove('drag-over');
+  const file = e.dataTransfer?.files?.[0];
+  if (file) processarImagem(file);
+}
+
+/** Seleção via input file */
+function imgFileSelected(e) {
+  const file = e.target.files?.[0];
+  if (file) processarImagem(file);
+}
+
+/** URL digitada — mostra preview se for imagem válida */
+function imgUrlChanged(url) {
+  if (!url) { limparPreview(); return; }
+  mostrarPreview(url);
+}
+
+/** Processa o arquivo: valida, converte para base64 e tenta upload */
+async function processarImagem(file) {
+  // Valida tipo
+  if (!file.type.startsWith('image/')) {
+    toast('Selecione um arquivo de imagem (JPG, PNG, WebP)', 'error');
+    return;
+  }
+  // Valida tamanho (5 MB)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Imagem muito grande. Máximo 5 MB.', 'error');
+    return;
+  }
+
+  // Tenta fazer upload para o backend
+  const uploadUrl = await uploadImagemBackend(file);
+  if (uploadUrl) {
+    document.getElementById('f-imagem').value = uploadUrl;
+    mostrarPreview(uploadUrl);
+    toast('Imagem enviada com sucesso!', 'success');
+    return;
+  }
+
+  // Fallback: converte para Base64 (data URL) e salva localmente
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    document.getElementById('f-imagem').value = dataUrl;
+    mostrarPreview(dataUrl);
+    toast('Imagem carregada localmente (base64)', 'info');
+  };
+  reader.readAsDataURL(file);
+}
+
+/** Tenta fazer upload para o endpoint de arquivos do backend */
+async function uploadImagemBackend(file) {
+  const token = Auth.getToken();
+  if (!token) return null;
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const res = await fetch(`${API_BASE}/api/files/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    // Extrai URL do arquivo do formato de resposta do backend
+    const fileId = data?.id || data?.fileId || data?.data?.id;
+    if (fileId) {
+      return `${API_BASE}/api/files/download/${fileId}`;
+    }
+    // Se o backend retornar URL direta
+    return data?.url || data?.fileUrl || data?.data?.url || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Mostra o preview da imagem */
+function mostrarPreview(src) {
+  const wrap = document.getElementById('img-preview-wrap');
+  const hint = document.getElementById('img-drop-hint');
+  const img  = document.getElementById('img-preview');
+  if (!wrap || !hint || !img) return;
+
+  img.src = src;
+  img.onerror = () => { limparPreview(); };
+  wrap.style.display = 'block';
+  hint.style.display = 'none';
+}
+
+/** Limpa o preview e o campo */
+function limparPreview() {
+  const wrap = document.getElementById('img-preview-wrap');
+  const hint = document.getElementById('img-drop-hint');
+  const img  = document.getElementById('img-preview');
+  const input = document.getElementById('f-imagem');
+  const fileInput = document.getElementById('f-imagem-file');
+  if (wrap) wrap.style.display = 'none';
+  if (hint) hint.style.display = 'block';
+  if (img)  img.src = '';
+  if (input) input.value = '';
+  if (fileInput) fileInput.value = '';
+}
+
+/** Botão ✕ — limpa imagem */
+function limparImagem(e) {
+  e.stopPropagation(); // não abre o file picker
+  limparPreview();
 }

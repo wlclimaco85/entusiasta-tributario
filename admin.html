@@ -231,6 +231,12 @@
     .editor-btn { padding:4px 10px;background:transparent;border:1px solid var(--preto-borda);border-radius:4px;color:var(--cinza-texto);font-size:0.8rem;cursor:pointer;transition:all 0.15s; }
     .editor-btn:hover { background:var(--laranja);border-color:var(--laranja);color:var(--branco); }
 
+    /* ── Image upload ── */
+    #img-drop-area.drag-over {
+      border-color: var(--laranja) !important;
+      background: rgba(224,123,0,0.06) !important;
+    }
+
     @media (max-width: 1024px) {
       .dash-cards { grid-template-columns: repeat(2, 1fr); }
       .charts-row { grid-template-columns: 1fr; }
@@ -453,8 +459,33 @@
           <input type="text" id="f-tags" class="form-control" placeholder="reforma tributária, MEI, imposto">
         </div>
         <div class="form-group">
-          <label class="form-label">Imagem de Capa (URL)</label>
-          <input type="url" id="f-imagem" class="form-control" placeholder="https://...">
+          <label class="form-label">Imagem de Capa</label>
+          <!-- Upload local + preview + URL -->
+          <div id="img-drop-area"
+            style="border:2px dashed var(--preto-borda);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:border-color 0.2s;position:relative;background:var(--preto-card);margin-bottom:8px"
+            onclick="document.getElementById('f-imagem-file').click()"
+            ondragover="imgDragOver(event)"
+            ondragleave="imgDragLeave(event)"
+            ondrop="imgDrop(event)">
+            <input type="file" id="f-imagem-file" accept="image/*" style="display:none" onchange="imgFileSelected(event)">
+            <div id="img-preview-wrap" style="display:none;position:relative">
+              <img id="img-preview" src="" alt="Preview"
+                style="max-height:120px;max-width:100%;border-radius:6px;object-fit:cover;display:block;margin:0 auto">
+              <button type="button" onclick="limparImagem(event)"
+                style="position:absolute;top:-6px;right:-6px;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.8rem;line-height:22px;text-align:center">✕</button>
+            </div>
+            <div id="img-drop-hint">
+              <div style="font-size:1.5rem;margin-bottom:4px">🖼️</div>
+              <div style="font-size:0.8rem;color:var(--cinza-texto)">Clique ou arraste uma imagem</div>
+              <div style="font-size:0.72rem;color:#555;margin-top:2px">JPG, PNG, WebP — máx. 5 MB</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="flex:1;height:1px;background:var(--preto-borda)"></div>
+            <span style="font-size:0.72rem;color:#555">ou cole uma URL</span>
+            <div style="flex:1;height:1px;background:var(--preto-borda)"></div>
+          </div>
+          <input type="url" id="f-imagem" class="form-control" placeholder="https://exemplo.com/imagem.jpg" oninput="imgUrlChanged(this.value)">
         </div>
       </div>
 
