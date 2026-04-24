@@ -4,7 +4,10 @@
  */
 
 // ── Configuração ──────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:8088/boletobancos';
+// Produção: Railway | Dev: localhost
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8088/boletobancos'
+  : 'https://appacademia-production-be7e.up.railway.app/boletobancos';
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 const Auth = {
@@ -112,6 +115,7 @@ const ArtigoAPI = {
 
 // ── API de Auth ───────────────────────────────────────────────────────────────
 const AuthAPI = {
+  // Railway backend usa { email, senha } no body
   login: (email, senha) => apiFetch('/rest/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, senha })

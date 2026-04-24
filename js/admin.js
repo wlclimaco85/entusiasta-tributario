@@ -1,175 +1,534 @@
 /**
- * admin.js — Painel de administração de artigos
+ * admin.js — Painel de administração completo
+ * Dashboard com gráficos Chart.js + Grid.js paginado com busca
  */
 
-let paginaAdmin = 0;
+// ── Estado global ─────────────────────────────────────────────────────────────
+let gridInstance = null;
+let todosArtigos = [];
 let slugAtual = null;
+let chartsInstancias = {};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.isLoggedIn()) {
     window.location.href = 'login.html';
     return;
   }
-  carregarCatsAdmin();
-  carregarArtigosAdmin();
+
+  // Exibe nome do usuário
+  const user = Auth.getUser();
+  const nomeEl = document.getElementById('user-nome');
+  if (nomeEl && user) nomeEl.textContent = user.nome || user.email || 'Admin';
+
+  // Carrega dados e inicia na seção lista
+  await carregarTodosArtigos();
+  mostrarSecao('lista');
 });
 
-// ── Navegação entre seções ────────────────────────────────────────────────────
+// ── Navegação ─────────────────────────────────────────────────────────────────
 function mostrarSecao(secao) {
-  document.getElementById('secao-lista').style.display = secao === 'lista' ? 'block' : 'none';
-  document.getElementById('secao-form').style.display  = secao === 'form'  ? 'block' : 'none';
+  ['dashboard', 'lista', 'form'].forEach(s => {
+    const el = document.getElementById(`secao-${s}`);
+    if (el) el.style.display = s === secao ? 'block' : 'none';
+  });
 
+  // Marca nav ativo
   document.querySelectorAll('.admin-nav a').forEach(a => a.classList.remove('active'));
+  const navEl = document.getElementById(`nav-${secao}`);
+  if (navEl) navEl.classList.add('active');
 
-  if (secao === 'lista') {
-    document.querySelectorAll('.admin-nav a')[0].classList.add('active');
-    carregarArtigosAdmin();
-  } else if (secao === 'novo') {
-    document.querySelectorAll('.admin-nav a')[1].classList.add('active');
-    limparForm();
-    document.getElementById('secao-form').style.display = 'block';
-    document.getElementById('secao-lista').style.display = 'none';
-    document.getElementById('form-titulo-header').textContent = 'Novo Artigo';
-    document.getElementById('btn-preview-site').style.display = 'none';
-  }
+  if (secao === 'dashboard') renderDashboard();
+  if (secao === 'lista') renderGrid();
 }
 
-// ── Categorias ────────────────────────────────────────────────────────────────
-async function carregarCatsAdmin() {
+// ── Carrega todos os artigos (para dashboard e grid) ──────────────────────────
+async function carregarTodosArtigos() {
   try {
-    const cats = await ArtigoAPI.categorias();
-    const sel = document.getElementById('filtro-cat');
-    cats.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      sel.appendChild(opt);
-    });
-  } catch (_) {}
-}
-
-// ── Lista de artigos ──────────────────────────────────────────────────────────
-async function carregarArtigosAdmin() {
-  const tbody = document.getElementById('tabela-artigos');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--cinza-texto)">Carregando...</td></tr>';
-
-  try {
-    const params = {
-      pagina: paginaAdmin,
-      tamanho: 20,
-      titulo: document.getElementById('filtro-titulo')?.value || undefined,
-      publicado: document.getElementById('filtro-publicado')?.value || undefined,
-      categoria: document.getElementById('filtro-cat')?.value || undefined,
-    };
-    // Remove params vazios
-    Object.keys(params).forEach(k => !params[k] && delete params[k]);
-
-    const res = await ArtigoAPI.listar(params);
-    const artigos = res?.data?.dados || [];
-    const total = res?.data?.total || 0;
-
-    if (!artigos.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--cinza-texto)">Nenhum artigo encontrado.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = artigos.map(a => `
-      <tr>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button onclick="alterarOrdem(${a.id}, ${a.ordemExibicao - 1})" class="editor-btn" title="Subir" style="padding:2px 6px">↑</button>
-            <span style="min-width:24px;text-align:center">${a.ordemExibicao}</span>
-            <button onclick="alterarOrdem(${a.id}, ${a.ordemExibicao + 1})" class="editor-btn" title="Descer" style="padding:2px 6px">↓</button>
-          </div>
-        </td>
-        <td>
-          <div style="font-weight:600;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.titulo}</div>
-          <div style="font-size:0.75rem;color:var(--cinza-texto)">${a.slug || ''}</div>
-        </td>
-        <td><span class="tag outline" style="font-size:0.7rem">${a.categoria || '—'}</span></td>
-        <td>
-          <span class="badge ${a.publicado ? 'badge-success' : 'badge-warning'}">
-            ${a.publicado ? '✅ Publicado' : '📝 Rascunho'}
-          </span>
-        </td>
-        <td>${a.destaque ? '⭐ Sim' : '—'}</td>
-        <td style="font-size:0.8rem;color:var(--cinza-texto)">${formatarDataCurta(a.dataPublicacao) || '—'}</td>
-        <td>
-          <div style="display:flex;gap:6px">
-            <button class="editor-btn" onclick="editarArtigo(${a.id})" title="Editar">✏️</button>
-            <button class="editor-btn" onclick="togglePublicar(${a.id}, ${a.publicado})" title="${a.publicado ? 'Despublicar' : 'Publicar'}">
-              ${a.publicado ? '🔒' : '🚀'}
-            </button>
-            <button class="editor-btn" onclick="toggleDestaque(${a.id}, ${a.destaque})" title="${a.destaque ? 'Remover destaque' : 'Destacar'}">
-              ${a.destaque ? '⭐' : '☆'}
-            </button>
-            ${a.slug ? `<a href="artigo.html?slug=${a.slug}" target="_blank" class="editor-btn" title="Ver no site">🌐</a>` : ''}
-            <button class="editor-btn" onclick="excluirArtigo(${a.id}, '${a.titulo.replace(/'/g, "\\'")}')" title="Excluir" style="color:#ef4444">🗑️</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
-
-    // Paginação
-    const totalPags = Math.ceil(total / 20);
-    const pagEl = document.getElementById('paginacao-admin');
-    if (totalPags > 1) {
-      let html = '';
-      for (let i = 0; i < totalPags; i++) {
-        html += `<button class="pag-btn ${i === paginaAdmin ? 'active' : ''}" onclick="irPaginaAdmin(${i})">${i + 1}</button>`;
-      }
-      pagEl.innerHTML = html;
-    } else {
-      pagEl.innerHTML = '';
-    }
+    const res = await ArtigoAPI.listar({ pagina: 0, tamanho: 500 });
+    todosArtigos = res?.data?.dados || [];
+    document.getElementById('grid-total').textContent =
+      `${todosArtigos.length} artigo${todosArtigos.length !== 1 ? 's' : ''}`;
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444">Erro: ${e.message}</td></tr>`;
+    toast('Erro ao carregar artigos: ' + e.message, 'error');
   }
 }
 
-function irPaginaAdmin(p) { paginaAdmin = p; carregarArtigosAdmin(); }
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const publicados = todosArtigos.filter(a => a.publicado);
+  const rascunhos  = todosArtigos.filter(a => !a.publicado);
+  const destaques  = todosArtigos.filter(a => a.destaque);
+  const totalViews = todosArtigos.reduce((s, a) => s + (a.visualizacoes || 0), 0);
 
-let filtroTimeout;
-function filtrarArtigos() {
-  clearTimeout(filtroTimeout);
-  filtroTimeout = setTimeout(() => { paginaAdmin = 0; carregarArtigosAdmin(); }, 400);
+  // KPIs
+  setText('kpi-total',     todosArtigos.length);
+  setText('kpi-views',     totalViews.toLocaleString('pt-BR'));
+  setText('kpi-destaques', destaques.length);
+  setText('kpi-rascunhos', rascunhos.length);
+  setText('kpi-pub-sub',   `${publicados.length} publicados`);
+
+  // Gráficos
+  renderChartMaisClicados();
+  renderChartAcessosMes();
+  renderChartCategorias();
+  renderChartStatus(publicados.length, rascunhos.length);
 }
 
-// ── Editar artigo ─────────────────────────────────────────────────────────────
-async function editarArtigo(id) {
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function destroyChart(id) {
+  if (chartsInstancias[id]) {
+    chartsInstancias[id].destroy();
+    delete chartsInstancias[id];
+  }
+}
+
+// Gráfico: Top 10 mais visualizados (barras horizontais)
+function renderChartMaisClicados() {
+  destroyChart('mais-clicados');
+  const top = [...todosArtigos]
+    .filter(a => a.publicado)
+    .sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0))
+    .slice(0, 10);
+
+  const ctx = document.getElementById('chart-mais-clicados');
+  if (!ctx) return;
+
+  chartsInstancias['mais-clicados'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: top.map(a => truncar(a.titulo, 30)),
+      datasets: [{
+        label: 'Visualizações',
+        data: top.map(a => a.visualizacoes || 0),
+        backgroundColor: 'rgba(224,123,0,0.7)',
+        borderColor: '#e07b00',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.raw.toLocaleString('pt-BR')} views`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#b0b0b0', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          ticks: { color: '#e0e0e0', font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// Gráfico: Acessos por mês (linha)
+function renderChartAcessosMes() {
+  destroyChart('acessos-mes');
+
+  // Agrupa visualizações por mês de publicação
+  const porMes = {};
+  todosArtigos.forEach(a => {
+    if (!a.dataPublicacao) return;
+    const d = new Date(a.dataPublicacao);
+    const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    porMes[chave] = (porMes[chave] || 0) + (a.visualizacoes || 0);
+  });
+
+  // Últimos 12 meses
+  const meses = [];
+  const agora = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    meses.push({ chave, label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }) });
+  }
+
+  const ctx = document.getElementById('chart-acessos-mes');
+  if (!ctx) return;
+
+  chartsInstancias['acessos-mes'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: meses.map(m => m.label),
+      datasets: [{
+        label: 'Visualizações',
+        data: meses.map(m => porMes[m.chave] || 0),
+        borderColor: '#e07b00',
+        backgroundColor: 'rgba(224,123,0,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#e07b00',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('pt-BR')} views` }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#b0b0b0', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#b0b0b0', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+
+// Gráfico: Artigos por categoria (rosca)
+function renderChartCategorias() {
+  destroyChart('categorias');
+  const cats = {};
+  todosArtigos.forEach(a => {
+    const c = a.categoria || 'Sem categoria';
+    cats[c] = (cats[c] || 0) + 1;
+  });
+
+  const cores = ['#e07b00','#f08c10','#ffa040','#ffb870','#ffd0a0','#22c55e','#3b82f6','#a855f7','#ef4444','#64748b'];
+  const labels = Object.keys(cats);
+  const ctx = document.getElementById('chart-categorias');
+  if (!ctx) return;
+
+  chartsInstancias['categorias'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: labels.map(l => cats[l]),
+        backgroundColor: cores.slice(0, labels.length),
+        borderColor: '#141414',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: '#b0b0b0', font: { size: 11 }, padding: 12 }
+        }
+      }
+    }
+  });
+}
+
+// Gráfico: Publicados vs Rascunhos (pizza)
+function renderChartStatus(pub, ras) {
+  destroyChart('status');
+  const ctx = document.getElementById('chart-status');
+  if (!ctx) return;
+
+  chartsInstancias['status'] = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['Publicados', 'Rascunhos'],
+      datasets: [{
+        data: [pub, ras],
+        backgroundColor: ['rgba(34,197,94,0.7)', 'rgba(234,179,8,0.7)'],
+        borderColor: ['#22c55e', '#eab308'],
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#b0b0b0', font: { size: 12 }, padding: 16 }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRID.JS
+// ══════════════════════════════════════════════════════════════════════════════
+function renderGrid() {
+  const container = document.getElementById('gridjs-container');
+  if (!container) return;
+
+  // Destrói instância anterior
+  if (gridInstance) {
+    gridInstance.destroy();
+    gridInstance = null;
+    container.innerHTML = '';
+  }
+
+  gridInstance = new gridjs.Grid({
+    columns: [
+      {
+        id: 'ordem',
+        name: 'Ordem',
+        width: '70px',
+        formatter: (cell, row) => {
+          const id = row.cells[7]?.data; // id está na col 7 (hidden)
+          return gridjs.html(`
+            <div style="display:flex;align-items:center;gap:2px">
+              <button class="grid-btn grid-btn-edit" style="padding:2px 6px" onclick="alterarOrdemGrid(${id},${cell - 1})" title="Subir">↑</button>
+              <span style="min-width:20px;text-align:center;font-size:0.8rem">${cell}</span>
+              <button class="grid-btn grid-btn-edit" style="padding:2px 6px" onclick="alterarOrdemGrid(${id},${cell + 1})" title="Descer">↓</button>
+            </div>
+          `);
+        }
+      },
+      {
+        id: 'titulo',
+        name: 'Título',
+        formatter: (cell, row) => {
+          const slug = row.cells[8]?.data;
+          return gridjs.html(`
+            <div>
+              <div style="font-weight:600;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cell}</div>
+              ${slug ? `<div style="font-size:0.72rem;color:#888">${slug}</div>` : ''}
+            </div>
+          `);
+        }
+      },
+      {
+        id: 'categoria',
+        name: 'Categoria',
+        width: '130px',
+        formatter: cell => cell
+          ? gridjs.html(`<span class="tag outline" style="font-size:0.7rem">${cell}</span>`)
+          : '—'
+      },
+      {
+        id: 'publicado',
+        name: 'Status',
+        width: '100px',
+        formatter: cell => gridjs.html(
+          cell
+            ? '<span class="status-pub">✅ Publicado</span>'
+            : '<span class="status-ras">📝 Rascunho</span>'
+        )
+      },
+      {
+        id: 'destaque',
+        name: 'Destaque',
+        width: '80px',
+        formatter: cell => cell ? '⭐' : '—'
+      },
+      {
+        id: 'visualizacoes',
+        name: 'Views',
+        width: '70px',
+        formatter: cell => (cell || 0).toLocaleString('pt-BR')
+      },
+      {
+        id: 'dataPublicacao',
+        name: 'Publicado em',
+        width: '110px',
+        formatter: cell => cell ? formatarDataCurta(cell) : '—'
+      },
+      // Colunas ocultas (usadas nos formatters)
+      { id: 'id',   name: 'id',   hidden: true },
+      { id: 'slug', name: 'slug', hidden: true },
+      {
+        id: 'acoes',
+        name: 'Ações',
+        width: '160px',
+        sort: false,
+        formatter: (cell, row) => {
+          const id  = row.cells[7]?.data;
+          const pub = row.cells[3]?.data;
+          const dest = row.cells[4]?.data;
+          const slug = row.cells[8]?.data;
+          return gridjs.html(`
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="grid-btn grid-btn-edit" onclick="editarArtigoGrid(${id})" title="Editar">✏️</button>
+              <button class="grid-btn grid-btn-pub" onclick="togglePublicarGrid(${id},${pub})" title="${pub ? 'Despublicar' : 'Publicar'}">
+                ${pub ? '🔒' : '🚀'}
+              </button>
+              <button class="grid-btn grid-btn-edit" onclick="toggleDestaqueGrid(${id},${dest})" title="${dest ? 'Remover destaque' : 'Destacar'}">
+                ${dest ? '⭐' : '☆'}
+              </button>
+              ${slug ? `<a href="artigo.html?slug=${slug}" target="_blank" class="grid-btn grid-btn-edit" title="Ver no site">🌐</a>` : ''}
+              <button class="grid-btn grid-btn-del" onclick="excluirArtigoGrid(${id})" title="Excluir">🗑️</button>
+            </div>
+          `);
+        }
+      }
+    ],
+    data: () => todosArtigos.map(a => [
+      a.ordemExibicao ?? 0,
+      a.titulo || '',
+      a.categoria || '',
+      a.publicado,
+      a.destaque,
+      a.visualizacoes || 0,
+      a.dataPublicacao,
+      a.id,
+      a.slug || '',
+      null // acoes placeholder
+    ]),
+    search: {
+      enabled: true,
+      placeholder: '🔍 Buscar por título, categoria...',
+      debounceTimeout: 300,
+    },
+    sort: true,
+    pagination: {
+      enabled: true,
+      limit: 15,
+      summary: true,
+    },
+    language: {
+      search: { placeholder: '🔍 Buscar artigos...' },
+      pagination: {
+        previous: '‹ Anterior',
+        next: 'Próximo ›',
+        showing: 'Mostrando',
+        results: () => 'artigos',
+        of: 'de',
+        to: 'a',
+      },
+      loading: 'Carregando...',
+      noRecordsFound: 'Nenhum artigo encontrado',
+      error: 'Erro ao carregar dados',
+    },
+    style: {
+      table: { 'border-collapse': 'collapse', 'width': '100%' },
+    },
+    className: {
+      container: 'gridjs-dark',
+    }
+  }).render(container);
+}
+
+// ── Ações da grid ─────────────────────────────────────────────────────────────
+async function editarArtigoGrid(id) {
   try {
     const a = await ArtigoAPI.buscarPorId(id);
     if (!a) { toast('Artigo não encontrado', 'error'); return; }
-
-    document.getElementById('artigo-id').value = a.id;
-    document.getElementById('f-titulo').value = a.titulo || '';
-    document.getElementById('f-subtitulo').value = a.subtitulo || '';
-    document.getElementById('f-slug').value = a.slug || '';
-    document.getElementById('f-categoria').value = a.categoria || '';
-    document.getElementById('f-resumo').value = a.resumo || '';
-    document.getElementById('f-conteudo').value = a.conteudoCompleto || '';
-    document.getElementById('f-autor').value = a.autor || '';
-    document.getElementById('f-tags').value = a.tags || '';
-    document.getElementById('f-imagem').value = a.imagemCapa || '';
-    document.getElementById('f-ordem').value = a.ordemExibicao ?? 0;
-    document.getElementById('f-fonte').value = a.fonte || '';
-    document.getElementById('f-link-fonte').value = a.linkFonte || '';
-    document.getElementById('f-publicado').checked = a.publicado;
-    document.getElementById('f-destaque').checked = a.destaque;
-
-    slugAtual = a.slug;
-    document.getElementById('form-titulo-header').textContent = 'Editar Artigo';
-    document.getElementById('btn-preview-site').style.display = a.slug ? 'inline-flex' : 'none';
-
-    document.getElementById('secao-lista').style.display = 'none';
-    document.getElementById('secao-form').style.display = 'block';
-  } catch (e) {
-    toast('Erro ao carregar artigo: ' + e.message, 'error');
-  }
+    preencherForm(a);
+    abrirModal(`✏️ Editar: ${truncar(a.titulo, 40)}`);
+  } catch (e) { toast('Erro: ' + e.message, 'error'); }
 }
 
-// ── Salvar artigo ─────────────────────────────────────────────────────────────
+async function togglePublicarGrid(id, publicadoAtual) {
+  try {
+    await ArtigoAPI.publicar(id, !publicadoAtual);
+    toast(publicadoAtual ? 'Artigo despublicado.' : '🚀 Artigo publicado!', 'success');
+    await carregarTodosArtigos();
+    renderGrid();
+  } catch (e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+async function toggleDestaqueGrid(id, destaqueAtual) {
+  try {
+    await ArtigoAPI.alterarDestaque(id, !destaqueAtual);
+    toast(destaqueAtual ? 'Destaque removido.' : '⭐ Artigo destacado!', 'success');
+    await carregarTodosArtigos();
+    renderGrid();
+  } catch (e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+async function alterarOrdemGrid(id, novaOrdem) {
+  if (novaOrdem < 0) return;
+  try {
+    await ArtigoAPI.alterarOrdem(id, novaOrdem);
+    await carregarTodosArtigos();
+    renderGrid();
+  } catch (e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+async function excluirArtigoGrid(id) {
+  const artigo = todosArtigos.find(a => a.id === id);
+  const titulo = artigo?.titulo || `ID ${id}`;
+  if (!confirm(`Excluir "${truncar(titulo, 60)}"?\n\nEsta ação não pode ser desfeita.`)) return;
+  try {
+    await ArtigoAPI.excluir(id);
+    toast('Artigo excluído.', 'info');
+    await carregarTodosArtigos();
+    renderGrid();
+  } catch (e) { toast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════════════════════════════════════
+function abrirModal(titulo = '✏️ Novo Artigo') {
+  document.getElementById('modal-titulo-header').textContent = titulo;
+  document.getElementById('modal-artigo').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharModal() {
+  document.getElementById('modal-artigo').style.display = 'none';
+  document.body.style.overflow = '';
+  limparForm();
+}
+
+function fecharModalFora(e) {
+  if (e.target === document.getElementById('modal-artigo')) fecharModal();
+}
+
+function abrirModalNovo() {
+  limparForm();
+  abrirModal('✏️ Novo Artigo');
+}
+
+// ── Formulário ────────────────────────────────────────────────────────────────
+function limparForm() {
+  document.getElementById('artigo-id').value = '';
+  document.getElementById('artigo-form').reset();
+  document.getElementById('f-autor').value = 'Entusiasta Tributário';
+  document.getElementById('f-ordem').value = '0';
+  document.getElementById('f-menus').value = 'home';
+  document.getElementById('btn-preview-site').style.display = 'none';
+  slugAtual = null;
+  // Fecha preview se aberto
+  document.getElementById('preview-area').style.display = 'none';
+  document.getElementById('f-conteudo').style.display = 'block';
+}
+
+function preencherForm(a) {
+  document.getElementById('artigo-id').value = a.id;
+  document.getElementById('f-titulo').value = a.titulo || '';
+  document.getElementById('f-subtitulo').value = a.subtitulo || '';
+  document.getElementById('f-slug').value = a.slug || '';
+  document.getElementById('f-categoria').value = a.categoria || '';
+  document.getElementById('f-menus').value = a.menuCategorias || 'home';
+  document.getElementById('f-resumo').value = a.resumo || '';
+  document.getElementById('f-conteudo').value = a.conteudoCompleto || '';
+  document.getElementById('f-autor').value = a.autor || 'Entusiasta Tributário';
+  document.getElementById('f-tags').value = a.tags || '';
+  document.getElementById('f-imagem').value = a.imagemCapa || '';
+  document.getElementById('f-ordem').value = a.ordemExibicao ?? 0;
+  document.getElementById('f-fonte').value = a.fonte || '';
+  document.getElementById('f-publicado').checked = a.publicado;
+  document.getElementById('f-destaque').checked = a.destaque;
+  slugAtual = a.slug;
+  document.getElementById('btn-preview-site').style.display = a.slug ? 'inline-flex' : 'none';
+}
+
+function gerarSlugAuto() {
+  const id = document.getElementById('artigo-id').value;
+  if (id) return; // Não sobrescreve em edição
+  const titulo = document.getElementById('f-titulo').value;
+  document.getElementById('f-slug').value = slugify(titulo);
+}
+
 async function salvarArtigo(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-salvar');
@@ -182,6 +541,7 @@ async function salvarArtigo(e) {
     subtitulo:        document.getElementById('f-subtitulo').value,
     slug:             document.getElementById('f-slug').value,
     categoria:        document.getElementById('f-categoria').value,
+    menuCategorias:   document.getElementById('f-menus').value,
     resumo:           document.getElementById('f-resumo').value,
     conteudoCompleto: document.getElementById('f-conteudo').value,
     autor:            document.getElementById('f-autor').value,
@@ -189,7 +549,6 @@ async function salvarArtigo(e) {
     imagemCapa:       document.getElementById('f-imagem').value,
     ordemExibicao:    parseInt(document.getElementById('f-ordem').value) || 0,
     fonte:            document.getElementById('f-fonte').value,
-    linkFonte:        document.getElementById('f-link-fonte').value,
     publicado:        document.getElementById('f-publicado').checked,
     destaque:         document.getElementById('f-destaque').checked,
   };
@@ -198,71 +557,26 @@ async function salvarArtigo(e) {
     let salvo;
     if (id) {
       salvo = await ArtigoAPI.atualizar(parseInt(id), artigo);
-      toast('Artigo atualizado com sucesso!', 'success');
+      toast('✅ Artigo atualizado!', 'success');
     } else {
       salvo = await ArtigoAPI.criar(artigo);
-      toast('Artigo criado com sucesso!', 'success');
+      toast('✅ Artigo criado!', 'success');
     }
     slugAtual = salvo?.slug;
     document.getElementById('artigo-id').value = salvo?.id || '';
     document.getElementById('f-slug').value = salvo?.slug || '';
     document.getElementById('btn-preview-site').style.display = salvo?.slug ? 'inline-flex' : 'none';
+
+    // Recarrega grid
+    await carregarTodosArtigos();
+    renderGrid();
+    fecharModal();
   } catch (err) {
     toast('Erro ao salvar: ' + err.message, 'error');
   } finally {
     btn.textContent = '💾 Salvar Artigo';
     btn.disabled = false;
   }
-}
-
-// ── Ações rápidas ─────────────────────────────────────────────────────────────
-async function togglePublicar(id, publicadoAtual) {
-  try {
-    await ArtigoAPI.publicar(id, !publicadoAtual);
-    toast(publicadoAtual ? 'Artigo despublicado.' : 'Artigo publicado!', 'success');
-    carregarArtigosAdmin();
-  } catch (e) { toast('Erro: ' + e.message, 'error'); }
-}
-
-async function toggleDestaque(id, destaqueAtual) {
-  try {
-    await ArtigoAPI.alterarDestaque(id, !destaqueAtual);
-    toast(destaqueAtual ? 'Destaque removido.' : 'Artigo destacado!', 'success');
-    carregarArtigosAdmin();
-  } catch (e) { toast('Erro: ' + e.message, 'error'); }
-}
-
-async function alterarOrdem(id, novaOrdem) {
-  if (novaOrdem < 0) return;
-  try {
-    await ArtigoAPI.alterarOrdem(id, novaOrdem);
-    carregarArtigosAdmin();
-  } catch (e) { toast('Erro: ' + e.message, 'error'); }
-}
-
-async function excluirArtigo(id, titulo) {
-  if (!confirm(`Excluir o artigo "${titulo}"?\n\nEsta ação não pode ser desfeita.`)) return;
-  try {
-    await ArtigoAPI.excluir(id);
-    toast('Artigo excluído.', 'info');
-    carregarArtigosAdmin();
-  } catch (e) { toast('Erro: ' + e.message, 'error'); }
-}
-
-// ── Formulário helpers ────────────────────────────────────────────────────────
-function limparForm() {
-  document.getElementById('artigo-id').value = '';
-  document.getElementById('artigo-form').reset();
-  document.getElementById('f-autor').value = 'Entusiasta Tributário';
-  document.getElementById('f-ordem').value = '0';
-  slugAtual = null;
-}
-
-function gerarSlugAuto() {
-  const id = document.getElementById('artigo-id').value;
-  if (id) return; // Não sobrescreve slug em edição
-  const titulo = document.getElementById('f-titulo').value;
-  document.getElementById('f-slug').value = slugify(titulo);
 }
 
 function abrirPreview() {
@@ -284,7 +598,7 @@ function inserirTag(tag) {
   } else if (tag === 'ul') {
     insert = `<ul>\n  <li>${sel || 'item 1'}</li>\n  <li>item 2</li>\n</ul>`;
   } else {
-    insert = `<${tag}>${sel || `conteúdo`}</${tag}>`;
+    insert = `<${tag}>${sel || 'conteúdo'}</${tag}>`;
   }
 
   ta.value = ta.value.substring(0, start) + insert + ta.value.substring(end);
@@ -305,4 +619,10 @@ function togglePreview() {
     prev.style.display = 'none';
     ta.style.display = 'block';
   }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function truncar(str, max) {
+  if (!str) return '';
+  return str.length > max ? str.substring(0, max) + '…' : str;
 }

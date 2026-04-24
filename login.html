@@ -59,7 +59,8 @@
 
       if (res?.data?.token || res?.token) {
         const token = res?.data?.token || res?.token;
-        const user = res?.data?.login || res?.login || { email };
+        // Extrai usuário de diferentes formatos de resposta
+        const user = res?.data?.login || res?.data?.user || res?.login || res?.user || { email };
         Auth.setToken(token);
         Auth.setUser(user);
         window.location.href = 'admin.html';
