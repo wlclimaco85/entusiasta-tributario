@@ -1,10 +1,36 @@
 /**
  * cotacoes.js — Página de cotações
  * APIs usadas (todas gratuitas, sem token):
- *  - AwesomeAPI: câmbio (USD, EUR, GBP, ARS, JPY)
- *  - CoinGecko: criptoativos (BTC, ETH, SOL, BNB, ADA)
- *  - Dados simulados para Ibovespa (APIs de bolsa BR exigem token)
+ *  - AwesomeAPI: câmbio (USD, EUR, GBP, ARS, JPY) — suporta CORS
+ *  - CoinGecko: criptoativos — suporta CORS
+ *  - Yahoo Finance via proxy CORS: Ibovespa e ações
  */
+
+// Proxies CORS públicos para contornar bloqueio do Yahoo Finance
+const CORS_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://cors-anywhere.herokuapp.com/',
+];
+
+async function fetchComProxy(url, timeoutMs = 8000) {
+  // Tenta direto primeiro (pode funcionar em alguns ambientes)
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) return res.json();
+  } catch (_) {}
+
+  // Tenta cada proxy
+  for (const proxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(proxy + encodeURIComponent(url), {
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (res.ok) return res.json();
+    } catch (_) { continue; }
+  }
+  return null;
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,18 +55,13 @@ async function carregarTudo() {
   ]);
 }
 
-// ── Ibovespa (dados simulados — APIs BR exigem token) ─────────────────────────
+// ── Ibovespa via Yahoo Finance + proxy CORS ───────────────────────────────────
 async function carregarIbovespa() {
-  // Tenta buscar via Yahoo Finance proxy (sem CORS issues)
   try {
-    const res = await fetch(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=30m&range=1d',
-      { headers: { 'Accept': 'application/json' } }
+    const data = await fetchComProxy(
+      'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=30m&range=1d'
     );
-    if (!res.ok) throw new Error('Yahoo indisponível');
-    const data = await res.json();
     const meta = data?.chart?.result?.[0]?.meta;
-    const timestamps = data?.chart?.result?.[0]?.timestamp || [];
     const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
 
     if (meta) {
@@ -57,18 +78,17 @@ async function carregarIbovespa() {
       document.getElementById('ibov-hora').textContent =
         `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
 
-      // Mini gráfico
       const precos = closes.filter(Boolean);
       if (precos.length > 1) renderMiniChart(precos, variacao < 0);
+    } else {
+      throw new Error('sem dados');
     }
   } catch (_) {
-    // Fallback: exibe mensagem amigável
     document.getElementById('ibov-valor').textContent = 'Indisponível';
     document.getElementById('ibov-meta').textContent =
-      'Dados do Ibovespa indisponíveis no momento. Tente novamente mais tarde.';
+      'Dados do Ibovespa indisponíveis no momento.';
   }
 
-  // Maiores altas/baixas via Yahoo (ações do Ibovespa)
   await carregarAltasBaixas();
 }
 
@@ -94,13 +114,11 @@ function renderMiniChart(precos, isDown) {
 }
 
 async function carregarAltasBaixas() {
-  // Ações do Ibovespa via Yahoo Finance
   const tickers = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'ABEV3.SA',
                    'WEGE3.SA', 'RENT3.SA', 'MGLU3.SA', 'LREN3.SA', 'BBAS3.SA'];
   try {
     const promises = tickers.map(t =>
-      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`)
-        .then(r => r.json())
+      fetchComProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, 5000)
         .then(d => {
           const meta = d?.chart?.result?.[0]?.meta;
           if (!meta) return null;
@@ -113,6 +131,8 @@ async function carregarAltasBaixas() {
     );
 
     const resultados = (await Promise.all(promises)).filter(Boolean);
+    if (!resultados.length) throw new Error('sem dados');
+
     const sorted = [...resultados].sort((a, b) => b.change - a.change);
     const altas = sorted.slice(0, 5);
     const baixas = [...sorted].reverse().slice(0, 5);
@@ -123,7 +143,7 @@ async function carregarAltasBaixas() {
         <span class="ab-pct up">+${a.change.toFixed(2)}%</span>
         <span class="ab-preco">R$ ${a.price?.toFixed(2)}</span>
       </div>
-    `).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Sem dados</p>';
+    `).join('');
 
     document.getElementById('maiores-baixas').innerHTML = baixas.map(a => `
       <div class="ab-item">
@@ -131,21 +151,19 @@ async function carregarAltasBaixas() {
         <span class="ab-pct down">${a.change.toFixed(2)}%</span>
         <span class="ab-preco">R$ ${a.price?.toFixed(2)}</span>
       </div>
-    `).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Sem dados</p>';
+    `).join('');
   } catch (_) {
-    document.getElementById('maiores-altas').innerHTML =
-      '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
-    document.getElementById('maiores-baixas').innerHTML =
-      '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
+    const msg = '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
+    document.getElementById('maiores-altas').innerHTML = msg;
+    document.getElementById('maiores-baixas').innerHTML = msg;
   }
 }
 
-// ── Moedas — AwesomeAPI (gratuita, sem token) ─────────────────────────────────
+// ── Moedas — AwesomeAPI (suporta CORS nativamente) ────────────────────────────
 async function carregarMoedas() {
   try {
-    const pares = 'USD-BRL,EUR-BRL,GBP-BRL,ARS-BRL,JPY-BRL';
-    const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${pares}`);
-    if (!res.ok) throw new Error('AwesomeAPI indisponível');
+    const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL,ARS-BRL,JPY-BRL');
+    if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
 
     const moedas = [
@@ -175,29 +193,26 @@ async function carregarMoedas() {
   }
 }
 
-// ── Criptoativos — CoinGecko (gratuito, sem token) ────────────────────────────
+// ── Criptoativos — CoinGecko (suporta CORS nativamente) ───────────────────────
 async function carregarCripto() {
   try {
-    // CoinGecko API v3 — sem autenticação para uso básico
-    const ids = 'bitcoin,ethereum,solana,binancecoin,cardano';
     const res = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=brl&include_24hr_change=true`
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=brl&include_24hr_change=true'
     );
-    if (!res.ok) throw new Error('CoinGecko indisponível');
+    if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
 
     const coins = [
-      { id: 'bitcoin',      symbol: 'BTC', nome: 'Bitcoin' },
-      { id: 'ethereum',     symbol: 'ETH', nome: 'Ethereum' },
-      { id: 'solana',       symbol: 'SOL', nome: 'Solana' },
-      { id: 'binancecoin',  symbol: 'BNB', nome: 'BNB' },
-      { id: 'cardano',      symbol: 'ADA', nome: 'Cardano' },
+      { id: 'bitcoin',     symbol: 'BTC', nome: 'Bitcoin' },
+      { id: 'ethereum',    symbol: 'ETH', nome: 'Ethereum' },
+      { id: 'solana',      symbol: 'SOL', nome: 'Solana' },
+      { id: 'binancecoin', symbol: 'BNB', nome: 'BNB' },
+      { id: 'cardano',     symbol: 'ADA', nome: 'Cardano' },
     ];
 
     document.getElementById('cripto-list').innerHTML = coins.map(c => {
       const d = data[c.id];
       if (!d) return '';
-      const preco = d.brl;
       const var_ = d.brl_24h_change || 0;
       return `
         <div class="cripto-item">
@@ -206,7 +221,7 @@ async function carregarCripto() {
             <div style="font-size:0.75rem;color:var(--cinza-texto)">${c.nome}</div>
           </div>
           <div style="text-align:right">
-            <div class="cripto-preco">R$ ${formatarNumero(preco)}</div>
+            <div class="cripto-preco">R$ ${formatarNumero(d.brl)}</div>
             <div class="cripto-var ${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
           </div>
         </div>
@@ -218,7 +233,7 @@ async function carregarCripto() {
   }
 }
 
-// ── Tabela de ações — Yahoo Finance ───────────────────────────────────────────
+// ── Tabela de ações via proxy ─────────────────────────────────────────────────
 async function carregarAcoes() {
   const tickers = [
     'PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA',
@@ -228,8 +243,7 @@ async function carregarAcoes() {
 
   try {
     const promises = tickers.map(t =>
-      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`)
-        .then(r => r.json())
+      fetchComProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, 5000)
         .then(d => {
           const meta = d?.chart?.result?.[0]?.meta;
           if (!meta) return null;
@@ -251,11 +265,7 @@ async function carregarAcoes() {
 
     const acoes = (await Promise.all(promises)).filter(Boolean);
 
-    if (!acoes.length) {
-      document.getElementById('acoes-tbody').innerHTML =
-        '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Dados indisponíveis</td></tr>';
-      return;
-    }
+    if (!acoes.length) throw new Error('sem dados');
 
     document.getElementById('acoes-tbody').innerHTML = acoes.map(a => `
       <tr>
@@ -272,7 +282,7 @@ async function carregarAcoes() {
     `).join('');
   } catch (_) {
     document.getElementById('acoes-tbody').innerHTML =
-      '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Erro ao carregar dados</td></tr>';
+      '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Dados indisponíveis</td></tr>';
   }
 }
 
@@ -286,12 +296,10 @@ async function buscarAtivo() {
 
   buscaTimeout = setTimeout(async () => {
     try {
-      // Tenta com sufixo .SA (ações brasileiras) e sem sufixo
       const ticker = q.endsWith('.SA') ? q : `${q}.SA`;
-      const res = await fetch(
+      const data = await fetchComProxy(
         `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`
       );
-      const data = await res.json();
       const meta = data?.chart?.result?.[0]?.meta;
       if (!meta) { resultEl.style.display = 'none'; return; }
 

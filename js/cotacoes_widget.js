@@ -17,14 +17,28 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
-// ── Ibovespa via Yahoo Finance ────────────────────────────────────────────────
+// ── Ibovespa via Yahoo Finance + proxy CORS ────────────────────────────────────
 async function carregarWidgetIbov() {
   try {
-    const res = await fetch(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d'
-    );
-    if (!res.ok) throw new Error('indisponível');
-    const data = await res.json();
+    // Tenta direto primeiro, depois via proxy
+    let data = null;
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d';
+
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+      if (res.ok) data = await res.json();
+    } catch (_) {}
+
+    if (!data) {
+      const proxies = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
+          if (res.ok) { data = await res.json(); break; }
+        } catch (_) { continue; }
+      }
+    }
+
     const meta = data?.chart?.result?.[0]?.meta;
     if (!meta) throw new Error('sem dados');
 
