@@ -82,8 +82,11 @@ const ArtigoAPI = {
 
   /** Incrementa visualizações (fire-and-forget, não bloqueia) */
   incrementarVisualizacoes: (id) => {
-    // Chama sem await — não bloqueia o carregamento da página
-    apiFetch(`/api/artigos/${id}/visualizacoes`, { method: 'PATCH' }).catch(() => {});
+    // Tenta o endpoint dedicado primeiro; se 404, usa o GET /publicos/{slug} que já incrementa
+    apiFetch(`/api/artigos/${id}/visualizacoes`, { method: 'PATCH' }).catch(() => {
+      // Endpoint novo não existe ainda no Railway — silencia o erro
+      // O incremento já acontece automaticamente no GET /publicos/{slug}
+    });
   },
 
   /** Artigos em destaque */
