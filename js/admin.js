@@ -28,10 +28,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
 function mostrarSecao(secao) {
-  ['dashboard', 'lista', 'form'].forEach(s => {
+  // 'form' é um alias para abrir o modal de novo artigo
+  if (secao === 'form') {
+    mostrarSecao('lista');
+    abrirModalNovo();
+    return;
+  }
+
+  ['dashboard', 'lista'].forEach(s => {
     const el = document.getElementById(`secao-${s}`);
     if (el) el.style.display = s === secao ? 'block' : 'none';
   });
+  // Esconde a seção form (não usada diretamente)
+  const formEl = document.getElementById('secao-form');
+  if (formEl) formEl.style.display = 'none';
 
   // Marca nav ativo
   document.querySelectorAll('.admin-nav a').forEach(a => a.classList.remove('active'));
