@@ -86,8 +86,7 @@ async function carregarIbovespa() {
     const varEl = document.getElementById('ibov-var');
     varEl.textContent = `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(2)}%`;
     varEl.className = `ibov-variacao ${variacao >= 0 ? 'up' : 'down'}`;
-    document.getElementById('ibov-meta').textContent =
-      `Fechamento anterior: ${formatarNumero(anterior)}`;
+    document.getElementById('ibov-meta').textContent = `Atualizado a 15 min`;
     document.getElementById('ibov-hora').textContent =
       `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
 

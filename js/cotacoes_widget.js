@@ -53,7 +53,7 @@ async function carregarWidgetIbov() {
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
       varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
     }
-    if (metaEl) metaEl.textContent = `Fech. ant.: ${anterior?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
+    if (metaEl) metaEl.textContent = `Atualizado a 15 min`;
   } catch (_) {
     const valEl = document.getElementById('w-ibov-valor');
     const metaEl = document.getElementById('w-ibov-meta');
