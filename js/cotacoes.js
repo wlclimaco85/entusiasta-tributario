@@ -55,20 +55,31 @@ async function carregarTudo() {
   ]);
 }
 
-// ── Ibovespa via brapi.dev (gratuito, sem CORS) ──────────────────────────────
+// ── Ibovespa via Yahoo Finance + corsproxy.io ────────────────────────────────
 async function carregarIbovespa() {
-  try {
-    const res = await fetch(
-      'https://brapi.dev/api/quote/%5EBVSP?range=1d&interval=1d&fundamental=false',
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (!res.ok) throw new Error('indisponível');
-    const data = await res.json();
-    const q = data?.results?.[0];
-    if (!q) throw new Error('sem dados');
+  const PROXIES = [
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url=',
+  ];
+  const YAHOO_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=30m&range=1d';
 
-    const valor = q.regularMarketPrice;
-    const anterior = q.regularMarketPreviousClose || valor;
+  let data = null;
+  for (const proxy of PROXIES) {
+    try {
+      const res = await fetch(proxy + encodeURIComponent(YAHOO_URL), {
+        signal: AbortSignal.timeout(7000)
+      });
+      if (res.ok) { data = await res.json(); break; }
+    } catch (_) { continue; }
+  }
+
+  try {
+    const meta = data?.chart?.result?.[0]?.meta;
+    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+    if (!meta) throw new Error('sem dados');
+
+    const valor = meta.regularMarketPrice;
+    const anterior = meta.chartPreviousClose || meta.previousClose || valor;
     const variacao = anterior ? ((valor - anterior) / anterior) * 100 : 0;
 
     document.getElementById('ibov-valor').textContent = formatarNumero(valor);
@@ -80,10 +91,11 @@ async function carregarIbovespa() {
     document.getElementById('ibov-hora').textContent =
       `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
 
+    const precos = closes.filter(Boolean);
+    if (precos.length > 1) renderMiniChart(precos, variacao < 0);
   } catch (_) {
     document.getElementById('ibov-valor').textContent = 'Indisponível';
-    document.getElementById('ibov-meta').textContent =
-      'Dados do Ibovespa indisponíveis no momento.';
+    document.getElementById('ibov-meta').textContent = 'Dados do Ibovespa indisponíveis no momento.';
   }
 
   await carregarAltasBaixas();

@@ -17,21 +17,30 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
-// ── Ibovespa via brapi.dev (gratuito, sem CORS) ──────────────────────────────
+// ── Ibovespa via Yahoo Finance + corsproxy.io ────────────────────────────────
 async function carregarWidgetIbov() {
-  try {
-    // brapi.dev — API brasileira gratuita para índices e ações
-    const res = await fetch(
-      'https://brapi.dev/api/quote/%5EBVSP?range=1d&interval=1d&fundamental=false',
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (!res.ok) throw new Error('indisponível');
-    const data = await res.json();
-    const q = data?.results?.[0];
-    if (!q) throw new Error('sem dados');
+  const PROXIES = [
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url=',
+  ];
+  const YAHOO_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d';
 
-    const valor = q.regularMarketPrice;
-    const anterior = q.regularMarketPreviousClose || valor;
+  let data = null;
+  for (const proxy of PROXIES) {
+    try {
+      const res = await fetch(proxy + encodeURIComponent(YAHOO_URL), {
+        signal: AbortSignal.timeout(7000)
+      });
+      if (res.ok) { data = await res.json(); break; }
+    } catch (_) { continue; }
+  }
+
+  try {
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta) throw new Error('sem dados');
+
+    const valor = meta.regularMarketPrice;
+    const anterior = meta.chartPreviousClose || meta.previousClose || valor;
     const var_ = anterior ? ((valor - anterior) / anterior) * 100 : 0;
 
     const valEl = document.getElementById('w-ibov-valor');
@@ -46,7 +55,6 @@ async function carregarWidgetIbov() {
     }
     if (metaEl) metaEl.textContent = `Fech. ant.: ${anterior?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
   } catch (_) {
-    // Fallback: tenta AwesomeAPI com USD-BRL como indicador de mercado
     const valEl = document.getElementById('w-ibov-valor');
     const metaEl = document.getElementById('w-ibov-meta');
     if (valEl) valEl.textContent = '—';
