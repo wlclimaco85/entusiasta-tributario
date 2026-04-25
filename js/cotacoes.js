@@ -55,21 +55,21 @@ async function carregarTudo() {
   ]);
 }
 
-// ── Ibovespa via AwesomeAPI (sem CORS, sem token) ────────────────────────────
+// ── Ibovespa via brapi.dev (gratuito, sem CORS) ──────────────────────────────
 async function carregarIbovespa() {
   try {
     const res = await fetch(
-      'https://economia.awesomeapi.com.br/json/last/IBOVESPA',
+      'https://brapi.dev/api/quote/%5EBVSP?range=1d&interval=1d&fundamental=false',
       { signal: AbortSignal.timeout(6000) }
     );
     if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const d = data?.IBOVESPA;
-    if (!d) throw new Error('sem dados');
+    const q = data?.results?.[0];
+    if (!q) throw new Error('sem dados');
 
-    const valor = parseFloat(d.bid);
-    const anterior = parseFloat(d.ask);
-    const variacao = parseFloat(d.pctChange) || 0;
+    const valor = q.regularMarketPrice;
+    const anterior = q.regularMarketPreviousClose || valor;
+    const variacao = anterior ? ((valor - anterior) / anterior) * 100 : 0;
 
     document.getElementById('ibov-valor').textContent = formatarNumero(valor);
     const varEl = document.getElementById('ibov-var');

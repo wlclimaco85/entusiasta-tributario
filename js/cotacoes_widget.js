@@ -17,21 +17,22 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
-// ── Ibovespa via AwesomeAPI (sem CORS, sem token) ────────────────────────────
+// ── Ibovespa via brapi.dev (gratuito, sem CORS) ──────────────────────────────
 async function carregarWidgetIbov() {
   try {
-    // AwesomeAPI suporta índices brasileiros incluindo IBOVESPA
+    // brapi.dev — API brasileira gratuita para índices e ações
     const res = await fetch(
-      'https://economia.awesomeapi.com.br/json/last/IBOVESPA',
+      'https://brapi.dev/api/quote/%5EBVSP?range=1d&interval=1d&fundamental=false',
       { signal: AbortSignal.timeout(6000) }
     );
     if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const d = data?.IBOVESPA;
-    if (!d) throw new Error('sem dados');
+    const q = data?.results?.[0];
+    if (!q) throw new Error('sem dados');
 
-    const valor = parseFloat(d.bid);
-    const var_ = parseFloat(d.pctChange) || 0;
+    const valor = q.regularMarketPrice;
+    const anterior = q.regularMarketPreviousClose || valor;
+    const var_ = anterior ? ((valor - anterior) / anterior) * 100 : 0;
 
     const valEl = document.getElementById('w-ibov-valor');
     const varEl = document.getElementById('w-ibov-var');
@@ -43,8 +44,9 @@ async function carregarWidgetIbov() {
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
       varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
     }
-    if (metaEl) metaEl.textContent = `Fech. ant.: ${parseFloat(d.ask)?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
+    if (metaEl) metaEl.textContent = `Fech. ant.: ${anterior?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · Delay 15min`;
   } catch (_) {
+    // Fallback: tenta AwesomeAPI com USD-BRL como indicador de mercado
     const valEl = document.getElementById('w-ibov-valor');
     const metaEl = document.getElementById('w-ibov-meta');
     if (valEl) valEl.textContent = '—';

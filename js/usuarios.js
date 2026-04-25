@@ -10,9 +10,17 @@ async function carregarUsuarios() {
   tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--cinza-texto)">Carregando...</td></tr>';
 
   try {
-    // Busca usuários do app SITE_JOAO (tipoLogin=8 = APP_SITE_JOAO)
-    const res = await apiFetch('/api/login?pagina=0&tamanho=100&codApp=8');
-    const usuarios = res?.data?.dados || [];
+    // Busca usuários do app SITE_JOAO — tenta por tipoLogin=8 (APP_SITE_JOAO)
+    // O backend usa o campo 'tipoLogin' como ordinal (8 = APP_SITE_JOAO)
+    const res = await apiFetch('/api/login?pagina=0&tamanho=200');
+    const todos = res?.data?.dados || [];
+
+    // Filtra localmente por tipoLogin = 8 (APP_SITE_JOAO) ou por aplicativo SITE_JOAO
+    const usuarios = todos.filter(u => {
+      const tipo = typeof u.tipoLogin === 'object' ? u.tipoLogin?.id : u.tipoLogin;
+      const appNome = u.aplicativo?.nome;
+      return tipo === 8 || tipo === '8' || appNome === 'SITE_JOAO';
+    });
 
     if (totalEl) totalEl.textContent = `${usuarios.length} usuário${usuarios.length !== 1 ? 's' : ''}`;
 
