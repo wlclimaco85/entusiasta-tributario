@@ -10,17 +10,32 @@ async function carregarUsuarios() {
   tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--cinza-texto)">Carregando...</td></tr>';
 
   try {
-    // Busca usuários do app SITE_JOAO — tenta por tipoLogin=8 (APP_SITE_JOAO)
-    // O backend usa o campo 'tipoLogin' como ordinal (8 = APP_SITE_JOAO)
+    // Busca todos os logins e filtra pelo tipo SITE_JOAO
     const res = await apiFetch('/api/login?pagina=0&tamanho=200');
-    const todos = res?.data?.dados || [];
+
+    // Log para debug — remover depois
+    console.log('[usuarios] resposta bruta:', JSON.stringify(res)?.substring(0, 300));
+
+    // O apiFetch retorna o body diretamente — tenta extrair de vários formatos
+    const body = res;
+    const todos =
+      body?.data?.dados ||          // { data: { dados: [...] } }
+      body?.dados ||                 // { dados: [...] }
+      (Array.isArray(body?.data) ? body.data : null) ||  // { data: [...] }
+      (Array.isArray(body) ? body : []);                 // [...]
+
+    console.log('[usuarios] total extraído:', todos?.length, '| primeiro:', JSON.stringify(todos?.[0])?.substring(0, 100));
 
     // Filtra localmente por tipoLogin = 8 (APP_SITE_JOAO) ou por aplicativo SITE_JOAO
-    const usuarios = todos.filter(u => {
+    // Se não encontrar nenhum com tipo 8, mostra todos (para debug)
+    const filtrados = todos.filter(u => {
       const tipo = typeof u.tipoLogin === 'object' ? u.tipoLogin?.id : u.tipoLogin;
       const appNome = u.aplicativo?.nome;
-      return tipo === 8 || tipo === '8' || appNome === 'SITE_JOAO';
+      return tipo === 8 || tipo === '8' || tipo === 'APP_SITE_JOAO' || appNome === 'SITE_JOAO';
     });
+
+    // Se não encontrou nenhum com filtro, mostra todos para diagnóstico
+    const usuarios = filtrados.length > 0 ? filtrados : todos;
 
     if (totalEl) totalEl.textContent = `${usuarios.length} usuário${usuarios.length !== 1 ? 's' : ''}`;
 
