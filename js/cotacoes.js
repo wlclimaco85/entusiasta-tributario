@@ -122,23 +122,23 @@ function renderMiniChart(precos, isDown) {
 }
 
 async function carregarAltasBaixas() {
-  const tickers = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'ABEV3.SA',
-                   'WEGE3.SA', 'RENT3.SA', 'MGLU3.SA', 'LREN3.SA', 'BBAS3.SA'];
+  // AwesomeAPI — ações brasileiras sem CORS, sem token
+  const tickers = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3'];
   try {
-    const promises = tickers.map(t =>
-      fetchComProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, 5000)
-        .then(d => {
-          const meta = d?.chart?.result?.[0]?.meta;
-          if (!meta) return null;
-          const var_ = meta.chartPreviousClose
-            ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
-            : 0;
-          return { symbol: t.replace('.SA', ''), price: meta.regularMarketPrice, change: var_ };
-        })
-        .catch(() => null)
+    const res = await fetch(
+      `https://economia.awesomeapi.com.br/json/last/${tickers.join(',')}`,
+      { signal: AbortSignal.timeout(8000) }
     );
+    if (!res.ok) throw new Error('indisponível');
+    const data = await res.json();
 
-    const resultados = (await Promise.all(promises)).filter(Boolean);
+    const resultados = tickers.map(t => {
+      const d = data[t];
+      if (!d) return null;
+      const var_ = parseFloat(d.pctChange) || 0;
+      return { symbol: t, price: parseFloat(d.bid), change: var_ };
+    }).filter(Boolean);
+
     if (!resultados.length) throw new Error('sem dados');
 
     const sorted = [...resultados].sort((a, b) => b.change - a.change);
@@ -241,37 +241,32 @@ async function carregarCripto() {
   }
 }
 
-// ── Tabela de ações via proxy ─────────────────────────────────────────────────
+// ── Tabela de ações via AwesomeAPI (sem CORS, sem token) ─────────────────────
 async function carregarAcoes() {
-  const tickers = [
-    'PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA',
-    'WEGE3.SA','RENT3.SA','MGLU3.SA','LREN3.SA','BBAS3.SA',
-    'SUZB3.SA','GGBR4.SA','CSNA3.SA','USIM5.SA','CSAN3.SA'
-  ];
+  const tickers = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3','SUZB3','GGBR4','CSNA3','USIM5','CSAN3'];
 
   try {
-    const promises = tickers.map(t =>
-      fetchComProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, 5000)
-        .then(d => {
-          const meta = d?.chart?.result?.[0]?.meta;
-          if (!meta) return null;
-          const var_ = meta.chartPreviousClose
-            ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
-            : 0;
-          return {
-            symbol: t.replace('.SA', ''),
-            name: meta.shortName || '',
-            price: meta.regularMarketPrice,
-            change: var_,
-            low: meta.regularMarketDayLow,
-            high: meta.regularMarketDayHigh,
-            volume: meta.regularMarketVolume,
-          };
-        })
-        .catch(() => null)
+    const res = await fetch(
+      `https://economia.awesomeapi.com.br/json/last/${tickers.join(',')}`,
+      { signal: AbortSignal.timeout(8000) }
     );
+    if (!res.ok) throw new Error('indisponível');
+    const data = await res.json();
 
-    const acoes = (await Promise.all(promises)).filter(Boolean);
+    const acoes = tickers.map(t => {
+      const d = data[t];
+      if (!d) return null;
+      const var_ = parseFloat(d.pctChange) || 0;
+      return {
+        symbol: t,
+        name: d.name || t,
+        price: parseFloat(d.bid),
+        change: var_,
+        low: parseFloat(d.low),
+        high: parseFloat(d.high),
+        volume: null,
+      };
+    }).filter(Boolean);
 
     if (!acoes.length) throw new Error('sem dados');
 
@@ -302,22 +297,40 @@ async function buscarAtivo() {
   const resultEl = document.getElementById('busca-resultado');
   if (!q || q.length < 2) { resultEl.style.display = 'none'; return; }
 
+  async function buscarAtivo() {
+  clearTimeout(buscaTimeout);
+  const q = document.getElementById('busca-input').value.trim().toUpperCase();
+  const resultEl = document.getElementById('busca-resultado');
+  if (!q || q.length < 2) { resultEl.style.display = 'none'; return; }
+
   buscaTimeout = setTimeout(async () => {
     try {
-      const ticker = q.endsWith('.SA') ? q : `${q}.SA`;
-      const data = await fetchComProxy(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`
+      const ticker = q.replace('.SA', '');
+      const res = await fetch(
+        `https://economia.awesomeapi.com.br/json/last/${ticker}`,
+        { signal: AbortSignal.timeout(6000) }
       );
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (!meta) { resultEl.style.display = 'none'; return; }
+      if (!res.ok) { resultEl.style.display = 'none'; return; }
+      const data = await res.json();
+      const d = data[ticker];
+      if (!d) { resultEl.style.display = 'none'; return; }
 
-      const var_ = meta.chartPreviousClose
-        ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
-        : 0;
+      const var_ = parseFloat(d.pctChange) || 0;
+      const price = parseFloat(d.bid);
 
       resultEl.style.display = 'block';
       resultEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--laranja)">${ticker}</div>
+            <div style="font-size:0.8rem;color:var(--cinza-texto)">${d.name || ticker}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:1.4rem;font-weight:900">R$ ${price.toFixed(2)}</div>
+            <div class="${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
+          </div>
+        </div>
+      `;
           <div>
             <div style="font-size:1.2rem;font-weight:800;color:var(--laranja)">${q}</div>
             <div style="font-size:0.85rem;color:var(--cinza-texto)">${meta.shortName || meta.longName || ''}</div>
