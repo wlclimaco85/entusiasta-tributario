@@ -40,6 +40,9 @@ async function carregarUsuarios() {
           <button class="grid-btn grid-btn-edit" onclick="abrirModalResetSenha('${u.email}', '${u.nome || u.email}')" title="Resetar senha" style="margin-right:6px">
             🔑 Resetar senha
           </button>
+          <button class="grid-btn grid-btn-edit" onclick="abrirModalEditarCpf(${u.id}, '${u.cpfCnpj || ''}')" title="Editar CPF" style="margin-right:6px">
+            📝 CPF
+          </button>
           <button class="grid-btn grid-btn-del" onclick="deletarUsuario(${u.id}, '${u.email}')" title="Deletar usuário">
             🗑️ Deletar
           </button>
@@ -279,4 +282,58 @@ function validarCpf(cpf) {
   resto = (soma * 10) % 11;
   if (resto === 10 || resto === 11) resto = 0;
   return resto === parseInt(nums[10]);
+}
+
+// ── Editar CPF ────────────────────────────────────────────────────────────────
+let _editarCpfId = null;
+
+function abrirModalEditarCpf(id, cpfAtual) {
+  _editarCpfId = id;
+  const cpfInput = document.getElementById('editar-cpf-input');
+  if (cpfInput) cpfInput.value = cpfAtual || '';
+  const modal = document.getElementById('modal-editar-cpf');
+  if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+
+function fecharModalEditarCpf() {
+  document.getElementById('modal-editar-cpf').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function salvarCpf(e) {
+  e.preventDefault();
+  const cpf = document.getElementById('editar-cpf-input').value.trim();
+  const errEl = document.getElementById('editar-cpf-erro');
+  const btn = document.getElementById('btn-salvar-cpf');
+
+  if (!validarCpf(cpf)) {
+    errEl.textContent = 'CPF inválido.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.textContent = 'Salvando...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login/${_editarCpfId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.getToken()}` },
+      body: JSON.stringify({ cpfCnpj: cpf }),
+    });
+    if (res.ok) {
+      toast('✅ CPF atualizado!', 'success');
+      fecharModalEditarCpf();
+      carregarUsuarios();
+    } else {
+      errEl.textContent = 'Erro ao salvar.';
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
+    errEl.textContent = 'Erro: ' + err.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '💾 Salvar';
+    btn.disabled = false;
+  }
 }
