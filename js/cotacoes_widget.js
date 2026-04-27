@@ -1,6 +1,5 @@
 /**
  * cotacoes_widget.js — Widget de cotações para a sidebar da home
- * APIs: mfinance.com.br (ações) + AwesomeAPI (câmbio) + CoinGecko (cripto)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,7 +15,7 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
-// ── Ibovespa via mfinance.com.br (variação média das principais ações) ────────
+// ── Ibovespa — mostra só variação (sem valor do índice) ───────────────────────
 async function carregarWidgetIbov() {
   try {
     const res = await fetch('https://mfinance.com.br/api/v1/stocks', { signal: AbortSignal.timeout(10000) });
@@ -27,14 +26,13 @@ async function carregarWidgetIbov() {
     if (!stocks.length) throw new Error('sem dados');
 
     const var_ = stocks.reduce((s, a) => s + (a.change || 0), 0) / stocks.length;
-    // Usa PETR4 como referência de preço
-    const petr4 = stocks.find(s => s.symbol === 'PETR4');
 
     const valEl = document.getElementById('w-ibov-valor');
     const varEl = document.getElementById('w-ibov-var');
     const metaEl = document.getElementById('w-ibov-meta');
 
-    if (valEl) valEl.textContent = petr4 ? `PETR4 R$${petr4.lastPrice?.toFixed(2)}` : '—';
+    // Não mostra valor do índice (não disponível sem proxy) — mostra variação média
+    if (valEl) valEl.textContent = 'Mercado';
     if (varEl) {
       varEl.textContent = `${var_ >= 0 ? '▲' : '▼'} ${Math.abs(var_).toFixed(2)}%`;
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
@@ -49,7 +47,7 @@ async function carregarWidgetIbov() {
   }
 }
 
-// ── Moedas via AwesomeAPI (sem token) ─────────────────────────────────────────
+// ── Moedas via AwesomeAPI ─────────────────────────────────────────────────────
 async function carregarWidgetMoedas() {
   try {
     const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL');
@@ -73,7 +71,7 @@ async function carregarWidgetMoedas() {
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--preto-borda);font-size:0.82rem">
           <span style="font-weight:600;color:var(--laranja)">${m.nome}</span>
           <div style="text-align:right">
-            <span>R$ ${parseFloat(d.bid).toFixed(3)}</span>
+            <span style="color:#ffffff;font-weight:600">R$ ${parseFloat(d.bid).toFixed(3)}</span>
             <span style="margin-left:6px;font-size:0.72rem;color:${var_ >= 0 ? '#22c55e' : '#ef4444'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</span>
           </div>
         </div>
@@ -85,7 +83,7 @@ async function carregarWidgetMoedas() {
   }
 }
 
-// ── Cripto via Binance (sem token, sem rate limit) ────────────────────────────
+// ── Cripto via Binance ────────────────────────────────────────────────────────
 async function carregarWidgetCripto() {
   try {
     const symbols = ['BTCBRL','ETHBRL'];
@@ -105,7 +103,7 @@ async function carregarWidgetCripto() {
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--preto-borda);font-size:0.82rem">
           <span style="font-weight:700;color:var(--laranja)">${symbol}</span>
           <div style="text-align:right">
-            <div>R$ ${price.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
+            <div style="color:#ffffff;font-weight:600">R$ ${price.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
             <div style="font-size:0.72rem;color:${var_ >= 0 ? '#22c55e' : '#ef4444'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
           </div>
         </div>
