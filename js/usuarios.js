@@ -33,7 +33,7 @@ async function carregarUsuarios() {
     tbody.innerHTML = usuarios.map(u => `
       <tr>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);color:var(--cinza-texto);font-size:0.8rem">#${u.id}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);font-weight:600">${u.nome || u.name || '—'}</td>
+        <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);font-weight:600;color:#ffffff">${u.nome || u.name || '—'}</td>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);color:var(--cinza-texto)">${u.email}</td>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);color:var(--cinza-texto)">${u.cpfCnpj || u.cpf || '—'}</td>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda)">
