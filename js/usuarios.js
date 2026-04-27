@@ -22,9 +22,21 @@ async function carregarUsuarios() {
       (Array.isArray(body) ? body : []);
 
     // Filtra por tipoLogin=7 (APP_CONTABILIDADE) E aplicativo.id=17 (SITE_JOAO)
+    // Log temporário para diagnóstico
+    if (todos.length > 0) {
+      const amostra = todos.slice(0, 3).map(u => ({
+        id: u.id, email: u.email,
+        tipoLogin: u.tipoLogin,
+        aplicativoId: u.aplicativo?.id,
+        aplicativoNome: u.aplicativo?.nome
+      }));
+      console.log('[usuarios] amostra:', JSON.stringify(amostra));
+    }
+
     const usuarios = todos.filter(u => {
       const tipo = typeof u.tipoLogin === 'object' ? u.tipoLogin?.id : u.tipoLogin;
       const appId = u.aplicativo?.id;
+      console.log(`[usuarios] id=${u.id} tipo=${tipo} appId=${appId}`);
       return (tipo === 7 || tipo === '7') && (appId === 17 || appId === '17');
     });
 
