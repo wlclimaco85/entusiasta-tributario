@@ -85,32 +85,27 @@ async function carregarWidgetMoedas() {
   }
 }
 
-// ── Cripto via CoinGecko (sem token) ──────────────────────────────────────────
+// ── Cripto via Binance (sem token, sem rate limit) ────────────────────────────
 async function carregarWidgetCripto() {
   try {
-    const res = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl&include_24hr_change=true'
-    );
+    const symbols = ['BTCBRL','ETHBRL'];
+    const tickers = symbols.map(s => `"${s}"`).join(',');
+    const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=[${tickers}]`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-
-    const coins = [
-      { id: 'bitcoin',  symbol: 'BTC' },
-      { id: 'ethereum', symbol: 'ETH' },
-    ];
 
     const el = document.getElementById('w-cripto');
     if (!el) return;
 
-    el.innerHTML = coins.map(c => {
-      const d = data[c.id];
-      if (!d) return '';
-      const var_ = d.brl_24h_change || 0;
+    el.innerHTML = data.map(d => {
+      const var_ = parseFloat(d.priceChangePercent) || 0;
+      const price = parseFloat(d.lastPrice);
+      const symbol = d.symbol.replace('BRL','');
       return `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--preto-borda);font-size:0.82rem">
-          <span style="font-weight:700;color:var(--laranja)">${c.symbol}</span>
+          <span style="font-weight:700;color:var(--laranja)">${symbol}</span>
           <div style="text-align:right">
-            <div>R$ ${d.brl?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
+            <div>R$ ${price.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
             <div style="font-size:0.72rem;color:${var_ >= 0 ? '#22c55e' : '#ef4444'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
           </div>
         </div>

@@ -134,30 +134,27 @@ async function carregarMoedas() {
   }
 }
 
-// ── Criptoativos via CoinGecko (CORS nativo) ──────────────────────────────────
+// ── Criptoativos via Binance (sem token, sem rate limit) ─────────────────────
 async function carregarCripto() {
   try {
-    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=brl&include_24hr_change=true');
+    // Binance API — gratuita, sem CORS, sem token
+    const symbols = ['BTCBRL','ETHBRL','SOLBRL','BNBBRL','ADABRL'];
+    const names = { BTCBRL: 'Bitcoin', ETHBRL: 'Ethereum', SOLBRL: 'Solana', BNBBRL: 'BNB', ADABRL: 'Cardano' };
+    const tickers = symbols.map(s => `"${s}"`).join(',');
+    const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=[${tickers}]`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const coins = [
-      { id: 'bitcoin', symbol: 'BTC', nome: 'Bitcoin' },
-      { id: 'ethereum', symbol: 'ETH', nome: 'Ethereum' },
-      { id: 'solana', symbol: 'SOL', nome: 'Solana' },
-      { id: 'binancecoin', symbol: 'BNB', nome: 'BNB' },
-      { id: 'cardano', symbol: 'ADA', nome: 'Cardano' },
-    ];
-    document.getElementById('cripto-list').innerHTML = coins.map(c => {
-      const d = data[c.id];
-      if (!d) return '';
-      const var_ = d.brl_24h_change || 0;
+    document.getElementById('cripto-list').innerHTML = data.map(d => {
+      const var_ = parseFloat(d.priceChangePercent) || 0;
+      const price = parseFloat(d.lastPrice);
+      const symbol = d.symbol.replace('BRL','');
       return `<div class="cripto-item">
         <div>
-          <div class="cripto-nome">${c.symbol}</div>
-          <div style="font-size:0.75rem;color:var(--cinza-texto)">${c.nome}</div>
+          <div class="cripto-nome">${symbol}</div>
+          <div style="font-size:0.75rem;color:var(--cinza-texto)">${names[d.symbol] || symbol}</div>
         </div>
         <div style="text-align:right">
-          <div class="cripto-preco">R$ ${formatarNumero(d.brl)}</div>
+          <div class="cripto-preco">R$ ${price.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
           <div class="cripto-var ${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
         </div>
       </div>`;
