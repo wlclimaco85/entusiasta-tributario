@@ -33,16 +33,15 @@ async function carregarUsuarios() {
     tbody.innerHTML = usuarios.map(u => `
       <tr>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);color:var(--cinza-texto);font-size:0.8rem">#${u.id}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);font-weight:600">${u.nome || '—'}</td>
+        <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);font-weight:600">${u.nome || u.name || '—'}</td>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);color:var(--cinza-texto)">${u.email}</td>
+        <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda);color:var(--cinza-texto)">${u.cpfCnpj || u.cpf || '—'}</td>
         <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda)">
-          <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;background:rgba(224,123,0,0.15);color:var(--laranja)">
-            ${tipoLoginLabel(u.tipoLogin)}
-          </span>
-        </td>
-        <td style="padding:12px 16px;border-bottom:1px solid var(--preto-borda)">
-          <button class="grid-btn grid-btn-edit" onclick="abrirModalResetSenha('${u.email}', '${u.nome || u.email}')" title="Resetar senha">
+          <button class="grid-btn grid-btn-edit" onclick="abrirModalResetSenha('${u.email}', '${u.nome || u.email}')" title="Resetar senha" style="margin-right:6px">
             🔑 Resetar senha
+          </button>
+          <button class="grid-btn grid-btn-del" onclick="deletarUsuario(${u.id}, '${u.email}')" title="Deletar usuário">
+            🗑️ Deletar
           </button>
         </td>
       </tr>
@@ -208,5 +207,26 @@ async function confirmarResetSenha(e) {
   } finally {
     btn.textContent = '🔑 Salvar Nova Senha';
     btn.disabled = false;
+  }
+}
+
+// ── Deletar Usuário ───────────────────────────────────────────────────────────
+async function deletarUsuario(id, email) {
+  if (!confirm(`Deletar o usuário "${email}"?\n\nEsta ação não pode ser desfeita.`)) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+    });
+
+    if (res.ok || res.status === 204) {
+      toast('✅ Usuário deletado com sucesso.', 'success');
+      carregarUsuarios();
+    } else {
+      toast(`Erro ao deletar: ${res.status}`, 'error');
+    }
+  } catch (err) {
+    toast('Erro de conexão: ' + err.message, 'error');
   }
 }
