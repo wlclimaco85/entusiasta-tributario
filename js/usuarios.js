@@ -25,7 +25,6 @@ async function carregarUsuarios() {
     const usuarios = todos.filter(u => {
       const tipo = typeof u.tipoLogin === 'object' ? u.tipoLogin?.id : u.tipoLogin;
       const appId = u.aplicativo?.id;
-      // tipoLogin ordinal 7 = APP_CONTABILIDADE, aplicativo id 17 = SITE_JOAO
       return (tipo === 7 || tipo === '7') && (appId === 17 || appId === '17');
     });
 
