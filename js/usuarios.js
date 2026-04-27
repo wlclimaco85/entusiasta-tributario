@@ -40,9 +40,6 @@ async function carregarUsuarios() {
           <button class="grid-btn grid-btn-edit" onclick="abrirModalResetSenha('${u.email}', '${u.nome || u.email}')" title="Resetar senha" style="margin-right:6px">
             🔑 Resetar senha
           </button>
-          <button class="grid-btn grid-btn-edit" onclick="abrirModalEditarCpf(${u.id}, '${u.cpfCnpj || ''}')" title="Editar CPF" style="margin-right:6px">
-            📝 CPF
-          </button>
           <button class="grid-btn grid-btn-del" onclick="deletarUsuario(${u.id}, '${u.email}')" title="Deletar usuário">
             🗑️ Deletar
           </button>
