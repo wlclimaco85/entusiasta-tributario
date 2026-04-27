@@ -1,7 +1,6 @@
 /**
  * cotacoes_widget.js — Widget de cotações para a sidebar da home
- * APIs: AwesomeAPI (câmbio) + CoinGecko (cripto) + Yahoo Finance (Ibovespa)
- * Todas gratuitas, sem token necessário.
+ * APIs: mfinance.com.br (ações) + AwesomeAPI (câmbio) + CoinGecko (cripto)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,43 +16,31 @@ async function carregarWidgetCotacoes() {
   ]);
 }
 
-// ── Ibovespa via Yahoo Finance + corsproxy.io ────────────────────────────────
+// ── Ibovespa via mfinance.com.br (variação média das principais ações) ────────
 async function carregarWidgetIbov() {
-  const PROXIES = [
-    'https://corsproxy.io/?url=',
-    'https://api.allorigins.win/raw?url=',
-  ];
-  const YAHOO_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d';
-
-  let data = null;
-  for (const proxy of PROXIES) {
-    try {
-      const res = await fetch(proxy + encodeURIComponent(YAHOO_URL), {
-        signal: AbortSignal.timeout(7000)
-      });
-      if (res.ok) { data = await res.json(); break; }
-    } catch (_) { continue; }
-  }
-
   try {
-    const meta = data?.chart?.result?.[0]?.meta;
-    if (!meta) throw new Error('sem dados');
+    const res = await fetch('https://mfinance.com.br/api/v1/stocks', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('indisponível');
+    const data = await res.json();
+    const top5 = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3'];
+    const stocks = (data.stocks || []).filter(s => top5.includes(s.symbol) && s.lastPrice > 0);
+    if (!stocks.length) throw new Error('sem dados');
 
-    const valor = meta.regularMarketPrice;
-    const anterior = meta.chartPreviousClose || meta.previousClose || valor;
-    const var_ = anterior ? ((valor - anterior) / anterior) * 100 : 0;
+    const var_ = stocks.reduce((s, a) => s + (a.change || 0), 0) / stocks.length;
+    // Usa PETR4 como referência de preço
+    const petr4 = stocks.find(s => s.symbol === 'PETR4');
 
     const valEl = document.getElementById('w-ibov-valor');
     const varEl = document.getElementById('w-ibov-var');
     const metaEl = document.getElementById('w-ibov-meta');
 
-    if (valEl) valEl.textContent = valor?.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) || '—';
+    if (valEl) valEl.textContent = petr4 ? `PETR4 R$${petr4.lastPrice?.toFixed(2)}` : '—';
     if (varEl) {
       varEl.textContent = `${var_ >= 0 ? '▲' : '▼'} ${Math.abs(var_).toFixed(2)}%`;
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
       varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
     }
-    if (metaEl) metaEl.textContent = `Atualizado a 15 min`;
+    if (metaEl) metaEl.textContent = 'Atualizado a 15 min';
   } catch (_) {
     const valEl = document.getElementById('w-ibov-valor');
     const metaEl = document.getElementById('w-ibov-meta');
