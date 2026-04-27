@@ -3,13 +3,29 @@
  * APIs: allorigins.win/get (proxy CORS) + Yahoo Finance v7 + CoinGecko + AwesomeAPI
  */
 
-// Helper: busca via allorigins.win/get que suporta CORS de qualquer origem
+// Helper: tenta múltiplos proxies CORS com fallback
 async function fetchViaProxy(url, timeout = 10000) {
-  const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout) });
-  if (!res.ok) throw new Error(`proxy ${res.status}`);
-  const wrapper = await res.json();
-  return JSON.parse(wrapper.contents);
+  const proxies = [
+    'https://api.allorigins.win/get?url=',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://thingproxy.freeboard.io/fetch/',
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy + encodeURIComponent(url), { signal: AbortSignal.timeout(timeout) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      // allorigins retorna {contents: "..."}, outros retornam direto
+      try {
+        const wrapper = JSON.parse(text);
+        if (wrapper.contents) return JSON.parse(wrapper.contents);
+        return wrapper;
+      } catch (_) {
+        return JSON.parse(text);
+      }
+    } catch (_) { continue; }
+  }
+  throw new Error('todos os proxies falharam');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
