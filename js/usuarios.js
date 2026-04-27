@@ -10,8 +10,8 @@ async function carregarUsuarios() {
   tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--cinza-texto)">Carregando...</td></tr>';
 
   try {
-    // Busca direto no backend com filtros: tipoLogin=7 E codApp=17
-    const res = await apiFetch('/api/login?pagina=0&tamanho=500&tipoLogin=7&codApp=17');
+    // Busca direto no backend com filtro: codApp=17 (SITE_JOAO)
+    const res = await apiFetch('/api/login?pagina=0&tamanho=500&codApp=17');
 
     const body = res;
     const usuarios =
