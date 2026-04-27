@@ -1,7 +1,16 @@
 /**
  * cotacoes.js — Página de cotações
- * APIs: AwesomeAPI (ações, câmbio) + CoinGecko (cripto) + Yahoo via proxy (Ibovespa)
+ * APIs: allorigins.win/get (proxy CORS) + Yahoo Finance v7 + CoinGecko + AwesomeAPI
  */
+
+// Helper: busca via allorigins.win/get que suporta CORS de qualquer origem
+async function fetchViaProxy(url, timeout = 10000) {
+  const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout) });
+  if (!res.ok) throw new Error(`proxy ${res.status}`);
+  const wrapper = await res.json();
+  return JSON.parse(wrapper.contents);
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,21 +34,10 @@ async function carregarTudo() {
   ]);
 }
 
-// ── Ibovespa via Yahoo Finance + proxy ───────────────────────────────────────
+// ── Ibovespa ──────────────────────────────────────────────────────────────────
 async function carregarIbovespa() {
-  // Tenta múltiplos proxies e endpoints
-  const tentativas = [
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d'),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d'),
-  ];
-  let data = null;
-  for (const url of tentativas) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (res.ok) { data = await res.json(); break; }
-    } catch (_) { continue; }
-  }
   try {
+    const data = await fetchViaProxy('https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d');
     const meta = data?.chart?.result?.[0]?.meta;
     if (!meta) throw new Error('sem dados');
     const valor = meta.regularMarketPrice;
@@ -59,37 +57,11 @@ async function carregarIbovespa() {
   await carregarAltasBaixas();
 }
 
-function renderMiniChart(precos, isDown) {
-  const min = Math.min(...precos), max = Math.max(...precos);
-  const range = max - min || 1;
-  const w = 400, h = 60;
-  const pts = precos.map((p, i) => {
-    const x = (i / (precos.length - 1)) * w;
-    const y = h - ((p - min) / range) * (h - 4) - 2;
-    return `${x},${y}`;
-  });
-  const color = isDown ? '#ef4444' : '#e07b00';
-  const fillColor = isDown ? 'rgba(239,68,68,0.1)' : 'rgba(224,123,0,0.1)';
-  const path = `M ${pts.join(' L ')} L ${w},${h} L 0,${h} Z`;
-  const pathEl = document.getElementById('ibov-path');
-  if (pathEl) {
-    pathEl.setAttribute('d', path);
-    pathEl.setAttribute('fill', fillColor);
-    pathEl.setAttribute('stroke', color);
-  }
-}
-
-// ── Maiores altas/baixas via Yahoo Finance + proxy ────────────────────────────
+// ── Maiores altas/baixas ──────────────────────────────────────────────────────
 async function carregarAltasBaixas() {
   const tickers = ['PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA','WEGE3.SA','RENT3.SA','MGLU3.SA','LREN3.SA','BBAS3.SA'];
   try {
-    // Yahoo Finance v7 quote endpoint — suporta múltiplos tickers
-    const symbols = tickers.join(',');
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChangePercent`;
-    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('indisponível');
-    const data = await res.json();
+    const data = await fetchViaProxy(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(',')}`);
     const quotes = data?.quoteResponse?.result || [];
     if (!quotes.length) throw new Error('sem dados');
     const resultados = quotes.map(q => ({
@@ -98,15 +70,13 @@ async function carregarAltasBaixas() {
       change: q.regularMarketChangePercent || 0,
     }));
     const sorted = [...resultados].sort((a, b) => b.change - a.change);
-    const altas = sorted.slice(0, 5);
-    const baixas = [...sorted].reverse().slice(0, 5);
-    document.getElementById('maiores-altas').innerHTML = altas.map(a => `
+    document.getElementById('maiores-altas').innerHTML = sorted.slice(0, 5).map(a => `
       <div class="ab-item">
         <span class="ab-ticker">${a.symbol}</span>
         <span class="ab-pct up">+${a.change.toFixed(2)}%</span>
         <span class="ab-preco">R$ ${a.price?.toFixed(2)}</span>
       </div>`).join('');
-    document.getElementById('maiores-baixas').innerHTML = baixas.map(a => `
+    document.getElementById('maiores-baixas').innerHTML = [...sorted].reverse().slice(0, 5).map(a => `
       <div class="ab-item">
         <span class="ab-ticker">${a.symbol}</span>
         <span class="ab-pct down">${a.change.toFixed(2)}%</span>
@@ -119,7 +89,7 @@ async function carregarAltasBaixas() {
   }
 }
 
-// ── Moedas via AwesomeAPI ─────────────────────────────────────────────────────
+// ── Moedas via AwesomeAPI (CORS nativo) ───────────────────────────────────────
 async function carregarMoedas() {
   try {
     const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL,ARS-BRL,JPY-BRL');
@@ -149,7 +119,7 @@ async function carregarMoedas() {
   }
 }
 
-// ── Criptoativos via CoinGecko ────────────────────────────────────────────────
+// ── Criptoativos via CoinGecko (CORS nativo) ──────────────────────────────────
 async function carregarCripto() {
   try {
     const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=brl&include_24hr_change=true');
@@ -182,16 +152,11 @@ async function carregarCripto() {
   }
 }
 
-// ── Tabela de ações via Yahoo Finance + proxy ─────────────────────────────────
+// ── Tabela de ações ───────────────────────────────────────────────────────────
 async function carregarAcoes() {
   const tickers = ['PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA','WEGE3.SA','RENT3.SA','MGLU3.SA','LREN3.SA','BBAS3.SA','SUZB3.SA','GGBR4.SA','CSNA3.SA','USIM5.SA','CSAN3.SA'];
   try {
-    const symbols = tickers.join(',');
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketDayLow,regularMarketDayHigh,regularMarketVolume,shortName`;
-    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('indisponível');
-    const data = await res.json();
+    const data = await fetchViaProxy(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(',')}`);
     const quotes = data?.quoteResponse?.result || [];
     if (!quotes.length) throw new Error('sem dados');
     document.getElementById('acoes-tbody').innerHTML = quotes.map(q => {
@@ -212,7 +177,7 @@ async function carregarAcoes() {
   }
 }
 
-// ── Busca de ativo via Yahoo Finance + proxy ──────────────────────────────────
+// ── Busca de ativo ────────────────────────────────────────────────────────────
 let buscaTimeout;
 async function buscarAtivo() {
   clearTimeout(buscaTimeout);
@@ -222,11 +187,7 @@ async function buscarAtivo() {
   buscaTimeout = setTimeout(async () => {
     try {
       const ticker = q.endsWith('.SA') ? q : `${q}.SA`;
-      const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
-      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
-      if (!res.ok) { resultEl.style.display = 'none'; return; }
-      const data = await res.json();
+      const data = await fetchViaProxy(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`);
       const q2 = data?.quoteResponse?.result?.[0];
       if (!q2) { resultEl.style.display = 'none'; return; }
       const var_ = q2.regularMarketChangePercent || 0;
