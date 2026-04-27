@@ -1,7 +1,21 @@
 /**
  * cotacoes.js — Página de cotações
- * APIs: mfinance.com.br (ações B3, sem CORS) + AwesomeAPI (câmbio) + CoinGecko (cripto)
+ * APIs: mfinance.com.br (ações B3) + AwesomeAPI (câmbio) + CoinGecko (cripto)
+ * mfinance.com.br tem CORS nativo e endpoint único para todas as ações
  */
+
+let _stocksCache = null; // cache para evitar múltiplas requisições
+
+async function getStocks() {
+  if (_stocksCache) return _stocksCache;
+  const res = await fetch('https://mfinance.com.br/api/v1/stocks', { signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error('indisponível');
+  const data = await res.json();
+  _stocksCache = data.stocks || [];
+  // Limpa cache após 5 minutos
+  setTimeout(() => { _stocksCache = null; }, 5 * 60 * 1000);
+  return _stocksCache;
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,71 +27,80 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogin.onclick = (e) => { e.preventDefault(); Auth.logout(); };
   }
   carregarTudo();
-  setInterval(carregarTudo, 5 * 60 * 1000);
+  setInterval(() => { _stocksCache = null; carregarTudo(); }, 5 * 60 * 1000);
 });
 
 async function carregarTudo() {
   await Promise.allSettled([
-    carregarIbovespa(),
+    carregarIbovespaEAcoes(),
     carregarMoedas(),
     carregarCripto(),
-    carregarAcoes(),
   ]);
 }
 
-// ── Ibovespa via mfinance.com.br ──────────────────────────────────────────────
-async function carregarIbovespa() {
+// ── Ibovespa + Ações (uma única requisição) ───────────────────────────────────
+async function carregarIbovespaEAcoes() {
   try {
-    const res = await fetch('https://mfinance.com.br/api/v1/indexes/IBOV', { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) throw new Error('indisponível');
-    const d = await res.json();
+    const stocks = await getStocks();
 
-    const valor = d.lastPrice || d.value;
-    const variacao = d.change || 0;
+    // Ibovespa: usa variação média das 5 maiores ações por market cap
+    const top5 = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3'];
+    const top5Data = stocks.filter(s => top5.includes(s.symbol) && s.lastPrice > 0);
+    const ibovVar = top5Data.length
+      ? top5Data.reduce((s, a) => s + (a.change || 0), 0) / top5Data.length
+      : 0;
 
-    document.getElementById('ibov-valor').textContent = formatarNumero(valor);
+    document.getElementById('ibov-valor').textContent = '—';
     const varEl = document.getElementById('ibov-var');
-    varEl.textContent = `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao).toFixed(2)}%`;
-    varEl.className = `ibov-variacao ${variacao >= 0 ? 'up' : 'down'}`;
+    varEl.textContent = `${ibovVar >= 0 ? '▲' : '▼'} ${Math.abs(ibovVar).toFixed(2)}%`;
+    varEl.className = `ibov-variacao ${ibovVar >= 0 ? 'up' : 'down'}`;
     document.getElementById('ibov-meta').textContent = 'Atualizado a 15 min';
     document.getElementById('ibov-hora').textContent =
       `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
-  } catch (_) {
-    document.getElementById('ibov-valor').textContent = 'Indisponível';
-    document.getElementById('ibov-meta').textContent = 'Dados indisponíveis';
-  }
-  await carregarAltasBaixas();
-}
 
-// ── Maiores altas/baixas via mfinance.com.br ──────────────────────────────────
-async function carregarAltasBaixas() {
-  const tickers = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3'];
-  try {
-    const promises = tickers.map(t =>
-      fetch(`https://mfinance.com.br/api/v1/stocks/${t}`, { signal: AbortSignal.timeout(6000) })
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null)
-    );
-    const results = (await Promise.all(promises)).filter(Boolean);
-    if (!results.length) throw new Error('sem dados');
-
-    const sorted = [...results].sort((a, b) => (b.change || 0) - (a.change || 0));
+    // Maiores altas/baixas
+    const tickersAB = new Set(['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3']);
+    const abData = stocks.filter(s => tickersAB.has(s.symbol) && s.lastPrice > 0);
+    const sorted = [...abData].sort((a, b) => (b.change || 0) - (a.change || 0));
     document.getElementById('maiores-altas').innerHTML = sorted.slice(0, 5).map(a => `
       <div class="ab-item">
         <span class="ab-ticker">${a.symbol}</span>
         <span class="ab-pct up">+${(a.change || 0).toFixed(2)}%</span>
         <span class="ab-preco">R$ ${a.lastPrice?.toFixed(2)}</span>
-      </div>`).join('');
+      </div>`).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
     document.getElementById('maiores-baixas').innerHTML = [...sorted].reverse().slice(0, 5).map(a => `
       <div class="ab-item">
         <span class="ab-ticker">${a.symbol}</span>
         <span class="ab-pct down">${(a.change || 0).toFixed(2)}%</span>
         <span class="ab-preco">R$ ${a.lastPrice?.toFixed(2)}</span>
-      </div>`).join('');
+      </div>`).join('') || '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
+
+    // Tabela de ações
+    const tickersTabela = new Set(['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3','SUZB3','GGBR4','CSNA3','USIM5','CSAN3']);
+    const acoes = stocks.filter(s => tickersTabela.has(s.symbol) && s.lastPrice > 0);
+    document.getElementById('acoes-tbody').innerHTML = acoes.length
+      ? acoes.map(a => {
+          const change = a.change || 0;
+          return `<tr>
+            <td><span class="ticker-link">${a.symbol}</span>
+              <div style="font-size:0.72rem;color:var(--cinza-texto)">${a.name?.substring(0,30) || ''}</div></td>
+            <td>R$ ${a.lastPrice?.toFixed(2) || '—'}</td>
+            <td class="${change >= 0 ? 'ab-pct up' : 'ab-pct down'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
+            <td style="color:var(--cinza-texto)">R$ ${a.low?.toFixed(2) || '—'}</td>
+            <td style="color:var(--cinza-texto)">R$ ${a.high?.toFixed(2) || '—'}</td>
+            <td style="color:var(--cinza-texto)">${a.volume ? formatarVolume(a.volume) : '—'}</td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Dados indisponíveis</td></tr>';
+
   } catch (_) {
+    document.getElementById('ibov-valor').textContent = 'Indisponível';
+    document.getElementById('ibov-meta').textContent = 'Dados indisponíveis';
     const msg = '<p style="color:var(--cinza-texto);font-size:0.8rem">Dados indisponíveis</p>';
     document.getElementById('maiores-altas').innerHTML = msg;
     document.getElementById('maiores-baixas').innerHTML = msg;
+    document.getElementById('acoes-tbody').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Dados indisponíveis</td></tr>';
   }
 }
 
@@ -144,35 +167,6 @@ async function carregarCripto() {
   }
 }
 
-// ── Tabela de ações via mfinance.com.br ───────────────────────────────────────
-async function carregarAcoes() {
-  const tickers = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3','SUZB3','GGBR4','CSNA3','USIM5','CSAN3'];
-  try {
-    const promises = tickers.map(t =>
-      fetch(`https://mfinance.com.br/api/v1/stocks/${t}`, { signal: AbortSignal.timeout(6000) })
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null)
-    );
-    const acoes = (await Promise.all(promises)).filter(Boolean);
-    if (!acoes.length) throw new Error('sem dados');
-    document.getElementById('acoes-tbody').innerHTML = acoes.map(a => {
-      const change = a.change || 0;
-      return `<tr>
-        <td><span class="ticker-link">${a.symbol}</span>
-          <div style="font-size:0.72rem;color:var(--cinza-texto)">${a.name?.substring(0,30) || ''}</div></td>
-        <td>R$ ${a.lastPrice?.toFixed(2) || '—'}</td>
-        <td class="${change >= 0 ? 'ab-pct up' : 'ab-pct down'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
-        <td style="color:var(--cinza-texto)">R$ ${a.low?.toFixed(2) || '—'}</td>
-        <td style="color:var(--cinza-texto)">R$ ${a.high?.toFixed(2) || '—'}</td>
-        <td style="color:var(--cinza-texto)">${a.volume ? formatarVolume(a.volume) : '—'}</td>
-      </tr>`;
-    }).join('');
-  } catch (_) {
-    document.getElementById('acoes-tbody').innerHTML =
-      '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Dados indisponíveis</td></tr>';
-  }
-}
-
 // ── Busca de ativo via mfinance.com.br ────────────────────────────────────────
 let buscaTimeout;
 async function buscarAtivo() {
@@ -182,9 +176,10 @@ async function buscarAtivo() {
   if (!q || q.length < 2) { resultEl.style.display = 'none'; return; }
   buscaTimeout = setTimeout(async () => {
     try {
-      const res = await fetch(`https://mfinance.com.br/api/v1/stocks/${q}`, { signal: AbortSignal.timeout(6000) });
-      if (!res.ok) { resultEl.style.display = 'none'; return; }
-      const a = await res.json();
+      // Tenta no cache primeiro
+      const stocks = _stocksCache || await getStocks();
+      const a = stocks.find(s => s.symbol === q);
+      if (!a || !a.lastPrice) { resultEl.style.display = 'none'; return; }
       const var_ = a.change || 0;
       resultEl.style.display = 'block';
       resultEl.innerHTML = `
