@@ -27,18 +27,20 @@ async function carregarTudo() {
 
 // ── Ibovespa via Yahoo Finance + proxy ───────────────────────────────────────
 async function carregarIbovespa() {
-  const PROXIES = ['https://corsproxy.io/?url=', 'https://api.allorigins.win/raw?url='];
-  const YAHOO_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=30m&range=1d';
+  // Tenta múltiplos proxies e endpoints
+  const tentativas = [
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d'),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d'),
+  ];
   let data = null;
-  for (const proxy of PROXIES) {
+  for (const url of tentativas) {
     try {
-      const res = await fetch(proxy + encodeURIComponent(YAHOO_URL), { signal: AbortSignal.timeout(7000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
       if (res.ok) { data = await res.json(); break; }
     } catch (_) { continue; }
   }
   try {
     const meta = data?.chart?.result?.[0]?.meta;
-    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
     if (!meta) throw new Error('sem dados');
     const valor = meta.regularMarketPrice;
     const anterior = meta.chartPreviousClose || meta.previousClose || valor;
@@ -50,8 +52,6 @@ async function carregarIbovespa() {
     document.getElementById('ibov-meta').textContent = 'Atualizado a 15 min';
     document.getElementById('ibov-hora').textContent =
       `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Delay 15 min`;
-    const precos = closes.filter(Boolean);
-    if (precos.length > 1) renderMiniChart(precos, variacao < 0);
   } catch (_) {
     document.getElementById('ibov-valor').textContent = 'Indisponível';
     document.getElementById('ibov-meta').textContent = 'Dados indisponíveis';
@@ -79,19 +79,24 @@ function renderMiniChart(precos, isDown) {
   }
 }
 
-// ── Maiores altas/baixas via AwesomeAPI ───────────────────────────────────────
+// ── Maiores altas/baixas via Yahoo Finance + proxy ────────────────────────────
 async function carregarAltasBaixas() {
-  const tickers = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3'];
+  const tickers = ['PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA','WEGE3.SA','RENT3.SA','MGLU3.SA','LREN3.SA','BBAS3.SA'];
   try {
-    const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${tickers.join(',')}`, { signal: AbortSignal.timeout(8000) });
+    // Yahoo Finance v7 quote endpoint — suporta múltiplos tickers
+    const symbols = tickers.join(',');
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChangePercent`;
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const resultados = tickers.map(t => {
-      const d = data[t];
-      if (!d) return null;
-      return { symbol: t, price: parseFloat(d.bid), change: parseFloat(d.pctChange) || 0 };
-    }).filter(Boolean);
-    if (!resultados.length) throw new Error('sem dados');
+    const quotes = data?.quoteResponse?.result || [];
+    if (!quotes.length) throw new Error('sem dados');
+    const resultados = quotes.map(q => ({
+      symbol: q.symbol.replace('.SA', ''),
+      price: q.regularMarketPrice,
+      change: q.regularMarketChangePercent || 0,
+    }));
     const sorted = [...resultados].sort((a, b) => b.change - a.change);
     const altas = sorted.slice(0, 5);
     const baixas = [...sorted].reverse().slice(0, 5);
@@ -177,35 +182,37 @@ async function carregarCripto() {
   }
 }
 
-// ── Tabela de ações via AwesomeAPI ────────────────────────────────────────────
+// ── Tabela de ações via Yahoo Finance + proxy ─────────────────────────────────
 async function carregarAcoes() {
-  const tickers = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3','SUZB3','GGBR4','CSNA3','USIM5','CSAN3'];
+  const tickers = ['PETR4.SA','VALE3.SA','ITUB4.SA','BBDC4.SA','ABEV3.SA','WEGE3.SA','RENT3.SA','MGLU3.SA','LREN3.SA','BBAS3.SA','SUZB3.SA','GGBR4.SA','CSNA3.SA','USIM5.SA','CSAN3.SA'];
   try {
-    const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${tickers.join(',')}`, { signal: AbortSignal.timeout(8000) });
+    const symbols = tickers.join(',');
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketDayLow,regularMarketDayHigh,regularMarketVolume,shortName`;
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error('indisponível');
     const data = await res.json();
-    const acoes = tickers.map(t => {
-      const d = data[t];
-      if (!d) return null;
-      return { symbol: t, name: d.name || t, price: parseFloat(d.bid), change: parseFloat(d.pctChange) || 0, low: parseFloat(d.low), high: parseFloat(d.high) };
-    }).filter(Boolean);
-    if (!acoes.length) throw new Error('sem dados');
-    document.getElementById('acoes-tbody').innerHTML = acoes.map(a => `
-      <tr>
-        <td><span class="ticker-link">${a.symbol}</span></td>
-        <td>R$ ${a.price?.toFixed(2) || '—'}</td>
-        <td class="${a.change >= 0 ? 'ab-pct up' : 'ab-pct down'}">${a.change >= 0 ? '+' : ''}${a.change.toFixed(2)}%</td>
-        <td style="color:var(--cinza-texto)">R$ ${a.low?.toFixed(2) || '—'}</td>
-        <td style="color:var(--cinza-texto)">R$ ${a.high?.toFixed(2) || '—'}</td>
-        <td style="color:var(--cinza-texto)">—</td>
-      </tr>`).join('');
+    const quotes = data?.quoteResponse?.result || [];
+    if (!quotes.length) throw new Error('sem dados');
+    document.getElementById('acoes-tbody').innerHTML = quotes.map(q => {
+      const change = q.regularMarketChangePercent || 0;
+      return `<tr>
+        <td><span class="ticker-link">${q.symbol.replace('.SA','')}</span>
+          <div style="font-size:0.72rem;color:var(--cinza-texto)">${q.shortName || ''}</div></td>
+        <td>R$ ${q.regularMarketPrice?.toFixed(2) || '—'}</td>
+        <td class="${change >= 0 ? 'ab-pct up' : 'ab-pct down'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
+        <td style="color:var(--cinza-texto)">R$ ${q.regularMarketDayLow?.toFixed(2) || '—'}</td>
+        <td style="color:var(--cinza-texto)">R$ ${q.regularMarketDayHigh?.toFixed(2) || '—'}</td>
+        <td style="color:var(--cinza-texto)">${q.regularMarketVolume ? formatarVolume(q.regularMarketVolume) : '—'}</td>
+      </tr>`;
+    }).join('');
   } catch (_) {
     document.getElementById('acoes-tbody').innerHTML =
       '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--cinza-texto)">Dados indisponíveis</td></tr>';
   }
 }
 
-// ── Busca de ativo via AwesomeAPI ─────────────────────────────────────────────
+// ── Busca de ativo via Yahoo Finance + proxy ──────────────────────────────────
 let buscaTimeout;
 async function buscarAtivo() {
   clearTimeout(buscaTimeout);
@@ -214,23 +221,24 @@ async function buscarAtivo() {
   if (!q || q.length < 2) { resultEl.style.display = 'none'; return; }
   buscaTimeout = setTimeout(async () => {
     try {
-      const ticker = q.replace('.SA', '');
-      const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${ticker}`, { signal: AbortSignal.timeout(6000) });
+      const ticker = q.endsWith('.SA') ? q : `${q}.SA`;
+      const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
       if (!res.ok) { resultEl.style.display = 'none'; return; }
       const data = await res.json();
-      const d = data[ticker];
-      if (!d) { resultEl.style.display = 'none'; return; }
-      const var_ = parseFloat(d.pctChange) || 0;
-      const price = parseFloat(d.bid);
+      const q2 = data?.quoteResponse?.result?.[0];
+      if (!q2) { resultEl.style.display = 'none'; return; }
+      const var_ = q2.regularMarketChangePercent || 0;
       resultEl.style.display = 'block';
       resultEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
           <div>
-            <div style="font-size:1.1rem;font-weight:700;color:var(--laranja)">${ticker}</div>
-            <div style="font-size:0.8rem;color:var(--cinza-texto)">${d.name || ticker}</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--laranja)">${q2.symbol.replace('.SA','')}</div>
+            <div style="font-size:0.8rem;color:var(--cinza-texto)">${q2.shortName || ''}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:1.4rem;font-weight:900">R$ ${price.toFixed(2)}</div>
+            <div style="font-size:1.4rem;font-weight:900">R$ ${q2.regularMarketPrice?.toFixed(2)}</div>
             <div class="${var_ >= 0 ? 'ab-pct up' : 'ab-pct down'}">${var_ >= 0 ? '+' : ''}${var_.toFixed(2)}%</div>
           </div>
         </div>`;
