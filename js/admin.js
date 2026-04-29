@@ -875,8 +875,11 @@ async function uploadImagemBackend(file) {
   if (!token) return null;
 
   try {
+    // Comprime a imagem no cliente antes de enviar (max 1200px, qualidade 85%)
+    const compressedFile = await comprimirImagem(file, 1200, 0.85);
+
     const formData = new FormData();
-    formData.append('file', file, file.name);
+    formData.append('file', compressedFile, file.name);
 
     const res = await fetch(`${API_BASE}/api/files/upload-imagem`, {
       method: 'POST',
@@ -887,10 +890,8 @@ async function uploadImagemBackend(file) {
     if (!res.ok) return null;
 
     const data = await res.json();
-    // O endpoint retorna { url, fileId, fileName }
     const url = data?.url;
     if (url) {
-      // Guarda o fileId para referência (não obrigatório)
       if (data.fileId) {
         document.getElementById('f-imagem').dataset.fileId = data.fileId;
       }
@@ -900,6 +901,38 @@ async function uploadImagemBackend(file) {
   } catch (_) {
     return null;
   }
+}
+
+/** Comprime imagem via canvas antes do upload */
+function comprimirImagem(file, maxWidth, quality) {
+  return new Promise((resolve) => {
+    // Se não for imagem ou for pequena (<500KB), envia sem comprimir
+    if (!file.type.startsWith('image/') || file.size < 500 * 1024) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
 }
 
 /** Mostra o preview da imagem */

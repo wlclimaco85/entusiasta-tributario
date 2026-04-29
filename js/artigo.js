@@ -111,15 +111,25 @@ async function carregarSidebar(categoriaAtual) {
     const slug = new URLSearchParams(window.location.search).get('slug');
     const relacionados = (ultimos || []).filter(a => a.slug !== slug).slice(0, 4);
     sidebarArtigos.innerHTML = relacionados.length
-      ? relacionados.map(a => `
+      ? relacionados.map(a => {
+          let imgSrc = a.imagemUrl || a.imagemCapa;
+          if (imgSrc && imgSrc.startsWith('/')) {
+            imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+          }
+          const imgContent = imgSrc
+            ? `<img src="${imgSrc}" alt="${a.titulo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+               <span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:1.2rem">${emojiCategoria(a.categoria)}</span>`
+            : `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:1.2rem">${emojiCategoria(a.categoria)}</span>`;
+          return `
           <div class="card-mini" style="padding:10px 0">
-            <div class="card-mini-img" style="width:56px;height:44px;font-size:1.2rem">${emojiCategoria(a.categoria)}</div>
+            <div class="card-mini-img">${imgContent}</div>
             <div class="card-mini-body">
-              <h3 style="font-size:0.8rem"><a href="artigo.html?slug=${a.slug}">${a.titulo}</a></h3>
+              <span class="tag" style="font-size:0.62rem;padding:2px 6px">${a.categoria || 'Geral'}</span>
+              <h3 style="font-size:0.78rem;margin-top:4px"><a href="artigo.html?slug=${a.slug}">${a.titulo}</a></h3>
               <div class="card-mini-meta">${formatarDataCurta(a.dataPublicacao)}</div>
             </div>
-          </div>
-        `).join('')
+          </div>`;
+        }).join('')
       : '<p style="font-size:0.8rem;color:var(--cinza-texto)">Nenhum artigo relacionado.</p>';
 
     // Categorias

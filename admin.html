@@ -248,7 +248,22 @@
     .modal-box .editor-toolbar { background: #f0f0f0; border-color: #ddd; }
     .modal-box .editor-btn { color: #555; border-color: #ddd; background: #fff; }
     .modal-box .editor-btn:hover { background: var(--laranja); color: #fff; border-color: var(--laranja); }
-    .modal-box #preview-area { background: #f8f8f8; border-color: #ddd; color: #1a1a1a; }
+    .modal-box #preview-area { background: #ffffff !important; border-color: #ddd; color: #1a1a1a !important; }
+    .modal-box #preview-area h2,
+    .modal-box #preview-area h3,
+    .modal-box #preview-area h4,
+    .modal-box #preview-area strong { color: #1a1a1a !important; }
+    .modal-box #preview-area p,
+    .modal-box #preview-area li { color: #333 !important; }
+    .modal-box #preview-area blockquote { color: #555 !important; background: rgba(224,123,0,0.06) !important; }
+    /* Formatação do conteúdo no preview (substitui artigo-conteudo) */
+    .modal-box #preview-area h2 { font-size:1.4rem; font-weight:800; margin:20px 0 10px; }
+    .modal-box #preview-area h3 { font-size:1.15rem; font-weight:700; margin:16px 0 8px; }
+    .modal-box #preview-area p { margin-bottom:16px; line-height:1.8; }
+    .modal-box #preview-area ul, .modal-box #preview-area ol { margin:16px 0 16px 24px; }
+    .modal-box #preview-area li { margin-bottom:8px; }
+    .modal-box #preview-area blockquote { border-left:4px solid var(--laranja); padding:12px 20px; margin:16px 0; border-radius:0 8px 8px 0; }
+    .modal-box #preview-area a { color:var(--laranja); text-decoration:underline; }
     .modal-box #img-drop-area { background: #f8f8f8 !important; border-color: #ddd !important; }
     .modal-box #img-drop-hint div { color: #888 !important; }
     .modal-box .form-check span { color: #333; }
@@ -522,7 +537,7 @@
         <textarea id="f-conteudo" class="form-control" rows="14"
           style="border-radius:0 0 var(--radius) var(--radius)"
           placeholder="<h2>Título da seção</h2>&#10;<p>Conteúdo do artigo...</p>"></textarea>
-        <div id="preview-area" style="display:none;padding:20px;background:var(--preto-card);border:1px solid var(--preto-borda);border-radius:0 0 var(--radius) var(--radius);min-height:200px" class="artigo-conteudo"></div>
+        <div id="preview-area" style="display:none;padding:20px;background:#ffffff !important;border:1px solid #ddd;border-radius:0 0 var(--radius) var(--radius);min-height:200px;color:#1a1a1a"></div>
       </div>
 
       <div class="form-row">
@@ -685,6 +700,37 @@
       <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-ghost" onclick="fecharModalEditarCpf()">Cancelar</button>
         <button type="submit" class="btn btn-primary" id="btn-salvar-cpf">💾 Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal: Editar Usuário ── -->
+<div id="modal-editar-usuario" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalEditarUsuario()">
+  <div class="modal-box" style="max-width:480px">
+    <button class="modal-close" onclick="fecharModalEditarUsuario()">✕</button>
+    <div class="modal-title">✏️ Editar Usuário</div>
+    <div id="editar-usuario-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:10px 14px;border-radius:var(--radius);font-size:0.85rem;margin-bottom:16px"></div>
+    <div id="editar-usuario-success" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:10px 14px;border-radius:var(--radius);font-size:0.85rem;margin-bottom:16px"></div>
+    <form id="editar-usuario-form" onsubmit="salvarEdicaoUsuario(event)">
+      <input type="hidden" id="editar-u-id">
+      <div class="form-group">
+        <label class="form-label">Nome completo *</label>
+        <input type="text" id="editar-u-nome" class="form-control" required placeholder="Nome do usuário">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail *</label>
+        <input type="email" id="editar-u-email" class="form-control" required placeholder="email@exemplo.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CPF</label>
+        <input type="text" id="editar-u-cpf" class="form-control" placeholder="000.000.000-00"
+          maxlength="14" oninput="mascaraCpf(this)" autocomplete="off">
+        <small id="editar-u-cpf-erro" style="color:#ef4444;font-size:0.78rem;display:none">CPF inválido</small>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-ghost" onclick="fecharModalEditarUsuario()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-salvar-edicao">💾 Salvar</button>
       </div>
     </form>
   </div>

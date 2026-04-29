@@ -27,22 +27,19 @@ async function carregarWidgetIbov() {
 
     const var_ = stocks.reduce((s, a) => s + (a.change || 0), 0) / stocks.length;
 
-    const valEl = document.getElementById('w-ibov-valor');
     const varEl = document.getElementById('w-ibov-var');
     const metaEl = document.getElementById('w-ibov-meta');
 
-    // Não mostra valor do índice (não disponível sem proxy) — mostra variação média
-    if (valEl) valEl.textContent = 'Mercado';
     if (varEl) {
       varEl.textContent = `${var_ >= 0 ? '▲' : '▼'} ${Math.abs(var_).toFixed(2)}%`;
       varEl.style.background = var_ >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
       varEl.style.color = var_ >= 0 ? '#22c55e' : '#ef4444';
     }
-    if (metaEl) metaEl.textContent = 'Atualizado a 15 min';
+    if (metaEl) metaEl.textContent = 'Dados com defasagem de 15 min';
   } catch (_) {
-    const valEl = document.getElementById('w-ibov-valor');
+    const varEl = document.getElementById('w-ibov-var');
     const metaEl = document.getElementById('w-ibov-meta');
-    if (valEl) valEl.textContent = '—';
+    if (varEl) varEl.textContent = '—';
     if (metaEl) metaEl.textContent = 'Dados indisponíveis';
   }
 }

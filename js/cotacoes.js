@@ -43,44 +43,23 @@ async function carregarIbovespaEAcoes() {
   try {
     const stocks = await getStocks();
 
-    // Tenta buscar o valor real do Ibovespa via Yahoo Finance
-    let ibovValor = null;
-    let ibovVar = 0;
-    try {
-      const ibovRes = await fetch(
-        'https://query2.finance.yahoo.com/v8/finance/chart/%5EBVSP?interval=1d&range=1d',
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (ibovRes.ok) {
-        const ibovData = await ibovRes.json();
-        const meta = ibovData?.chart?.result?.[0]?.meta;
-        if (meta?.regularMarketPrice) {
-          ibovValor = meta.regularMarketPrice;
-          const anterior = meta.chartPreviousClose || meta.previousClose || ibovValor;
-          ibovVar = anterior ? ((ibovValor - anterior) / anterior) * 100 : 0;
-        }
-      }
-    } catch (_) {}
-
-    // Fallback: variação média das 5 maiores ações
-    if (ibovValor === null) {
-      const top5 = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3'];
-      const top5Data = stocks.filter(s => top5.includes(s.symbol) && s.lastPrice > 0);
-      ibovVar = top5Data.length
-        ? top5Data.reduce((s, a) => s + (a.change || 0), 0) / top5Data.length
-        : 0;
-    }
+    // Variação média das 5 maiores ações como referência do mercado
+    const top5 = ['PETR4','VALE3','ITUB4','BBDC4','ABEV3'];
+    const top5Data = stocks.filter(s => top5.includes(s.symbol) && s.lastPrice > 0);
+    const ibovVar = top5Data.length
+      ? top5Data.reduce((s, a) => s + (a.change || 0), 0) / top5Data.length
+      : 0;
 
     const valEl = document.getElementById('ibov-valor');
     const varEl = document.getElementById('ibov-var');
-    if (valEl) valEl.textContent = ibovValor ? formatarNumero(ibovValor) : '—';
+    if (valEl) valEl.textContent = '—';
     if (varEl) {
       varEl.textContent = `${ibovVar >= 0 ? '▲' : '▼'} ${Math.abs(ibovVar).toFixed(2)}%`;
       varEl.className = `ibov-variacao ${ibovVar >= 0 ? 'up' : 'down'}`;
     }
-    document.getElementById('ibov-meta').textContent = 'Atualizado a 15 min';
+    document.getElementById('ibov-meta').textContent = 'Dados com defasagem de 15 min';
     document.getElementById('ibov-hora').textContent =
-      `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Atraso 15 min`;
+      `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Defasagem de 15 min`;
 
     // Maiores altas/baixas
     const tickersAB = new Set(['PETR4','VALE3','ITUB4','BBDC4','ABEV3','WEGE3','RENT3','MGLU3','LREN3','BBAS3']);

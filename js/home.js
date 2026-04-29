@@ -14,6 +14,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   menuAtivo = params.get('menu') || '';
   categoriaAtiva = params.get('cat') || '';
 
+  // Esconde hero quando há filtro de menu ou categoria ativo
+  if (menuAtivo || categoriaAtiva) {
+    const heroSection = document.querySelector('.hero');
+    if (heroSection) heroSection.style.display = 'none';
+  }
+
   // Marca link ativo no nav
   document.querySelectorAll('.nav-links a').forEach(a => {
     const href = a.getAttribute('href');
@@ -144,16 +150,26 @@ function irCarrossel(index) {
 function renderHeroSidebar(artigos) {
   const el = document.getElementById('hero-sidebar-list');
   if (!artigos.length) { el.innerHTML = '<p style="color:var(--cinza-texto);font-size:0.85rem">Nenhum artigo disponível.</p>'; return; }
-  el.innerHTML = artigos.map(a => `
+  el.innerHTML = artigos.map(a => {
+    let imgSrc = a.imagemUrl || a.imagemCapa;
+    if (imgSrc && imgSrc.startsWith('/')) {
+      imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+    }
+    const imgContent = imgSrc
+      ? `<img src="${imgSrc}" alt="${a.titulo}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        + `<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:1.4rem">${emojiCategoria(a.categoria)}</span>`
+      : `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:1.4rem">${emojiCategoria(a.categoria)}</span>`;
+    return `
     <div class="card-mini">
-      <div class="card-mini-img">${emojiCategoria(a.categoria)}</div>
+      <div class="card-mini-img" style="overflow:hidden;border-radius:6px">${imgContent}</div>
       <div class="card-mini-body">
         <span class="tag" style="font-size:0.65rem">${a.categoria || 'Geral'}</span>
         <h3><a href="artigo.html?slug=${a.slug}">${a.titulo}</a></h3>
         <div class="card-mini-meta">${formatarDataCurta(a.dataPublicacao)}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // ── Categorias ────────────────────────────────────────────────────────────────
@@ -185,6 +201,9 @@ function filtrarCategoria(cat) {
   // Atualiza título
   const titulo = document.getElementById('section-titulo');
   titulo.textContent = cat ? `${emojiCategoria(cat)} ${cat}` : 'Últimas Notícias';
+  // Esconde hero ao filtrar por categoria
+  const heroSection = document.querySelector('.hero');
+  if (heroSection) heroSection.style.display = cat ? 'none' : '';
   carregarArtigos();
 }
 
