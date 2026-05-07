@@ -35,7 +35,20 @@
         ✏️ Escrever
       </a>
       <a href="login.html" class="btn btn-ghost" id="btn-login">Entrar</a>
+      <!-- Menu hamburguer mobile -->
+      <button id="btn-menu-mobile" class="btn btn-ghost" style="display:none;padding:7px 10px;font-size:1.2rem" onclick="toggleMenuMobile()" aria-label="Menu">☰</button>
     </div>
+  </div>
+  <!-- Nav mobile dropdown -->
+  <div id="nav-mobile" style="display:none;background:var(--preto-card);border-top:1px solid var(--preto-borda);padding:12px 20px">
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:4px">
+      <li><a href="index.html" style="display:block;padding:10px 12px;border-radius:var(--radius);color:var(--cinza-texto);font-size:0.95rem;font-weight:500">🏠 Home</a></li>
+      <li><a href="index.html?menu=tributario" style="display:block;padding:10px 12px;border-radius:var(--radius);color:var(--cinza-texto);font-size:0.95rem;font-weight:500">📊 Tributário</a></li>
+      <li><a href="index.html?menu=mei" style="display:block;padding:10px 12px;border-radius:var(--radius);color:var(--cinza-texto);font-size:0.95rem;font-weight:500">🏪 MEI</a></li>
+      <li><a href="index.html?menu=empresarial" style="display:block;padding:10px 12px;border-radius:var(--radius);color:var(--cinza-texto);font-size:0.95rem;font-weight:500">🏢 Empresarial</a></li>
+      <li><a href="index.html?menu=reforma" style="display:block;padding:10px 12px;border-radius:var(--radius);color:var(--cinza-texto);font-size:0.95rem;font-weight:500">⚖️ Reforma Tributária</a></li>
+      <li><a href="index.html?menu=estadual" style="display:block;padding:10px 12px;border-radius:var(--radius);color:var(--cinza-texto);font-size:0.95rem;font-weight:500">🗺️ Estadual</a></li>
+    </ul>
   </div>
 </header>
 
@@ -89,7 +102,7 @@
       <span id="total-artigos" style="font-size:0.8rem;color:var(--cinza-texto)"></span>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">
+    <div id="artigos-layout" style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">
       <!-- Artigos -->
       <div>
         <div class="cards-grid" id="artigos-grid" style="grid-template-columns:repeat(2,1fr)">
@@ -188,5 +201,14 @@
 <script src="js/api.js"></script>
 <script src="js/home.js"></script>
 <script src="js/cotacoes_widget.js"></script>
+<script>
+function toggleMenuMobile() {
+  const nav = document.getElementById('nav-mobile');
+  const btn = document.getElementById('btn-menu-mobile');
+  const open = nav.style.display === 'none' || nav.style.display === '';
+  nav.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '✕' : '☰';
+}
+</script>
 </body>
 </html>

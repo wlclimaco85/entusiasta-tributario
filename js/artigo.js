@@ -2,6 +2,32 @@
  * artigo.js — Lógica da página de leitura de artigo
  */
 
+/**
+ * Sanitiza conteúdo HTML de artigo:
+ * - Se for documento HTML completo (<!DOCTYPE>, <html>), extrai só o <body>
+ * - Remove <script>, <style>, <link>, <meta>, <iframe>, <object>, <embed>
+ * - Garante que não quebra o layout do site
+ */
+function sanitizarConteudo(html) {
+  if (!html) return '';
+  let conteudo = html.trim();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(conteudo, 'text/html');
+
+  // Remove elementos que podem quebrar o layout ou injetar código
+  doc.querySelectorAll(
+    'script, style, link, meta, iframe, object, embed, base, form'
+  ).forEach(el => el.remove());
+
+  // Se era documento completo, pega só o body; senão pega tudo
+  const isFullDoc = conteudo.toLowerCase().includes('<!doctype') ||
+                    conteudo.toLowerCase().startsWith('<html');
+  return isFullDoc
+    ? (doc.body ? doc.body.innerHTML : conteudo)
+    : doc.body.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Auth header
   if (Auth.isLoggedIn()) {
@@ -71,7 +97,7 @@ function renderArtigo(a) {
   }
 
   if (a.conteudoCompleto) {
-    corpo.innerHTML = a.conteudoCompleto;
+    corpo.innerHTML = sanitizarConteudo(a.conteudoCompleto);
   } else if (a.resumo) {
     corpo.innerHTML = `<p>${a.resumo}</p>`;
   } else {
