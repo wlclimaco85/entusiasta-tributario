@@ -97,7 +97,7 @@ function renderCarrossel() {
   const emoji = emojiCategoria(artigo.categoria);
   let imgSrc = artigo.imagemUrl || artigo.imagemCapa;
   if (imgSrc && imgSrc.startsWith('/')) {
-    imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+    imgSrc = new URL(API_BASE).origin + imgSrc;
   }
   const imgHtml = imgSrc
     ? `<img src="${imgSrc}" alt="${artigo.titulo}" class="hero-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -153,7 +153,7 @@ function renderHeroSidebar(artigos) {
   el.innerHTML = artigos.map(a => {
     let imgSrc = a.imagemUrl || a.imagemCapa;
     if (imgSrc && imgSrc.startsWith('/')) {
-      imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+      imgSrc = new URL(API_BASE).origin + imgSrc;
     }
     const imgContent = imgSrc
       ? `<img src="${imgSrc}" alt="${a.titulo}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -261,7 +261,7 @@ function renderCard(a) {
   // Se a URL for relativa (começa com /), adiciona o host do backend
   let imgSrc = a.imagemUrl || a.imagemCapa;
   if (imgSrc && imgSrc.startsWith('/')) {
-    imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+    imgSrc = new URL(API_BASE).origin + imgSrc;
   }
   const imgHtml = imgSrc
     ? `<img src="${imgSrc}" alt="${a.titulo}" class="card-img" style="object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`

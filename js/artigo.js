@@ -85,7 +85,7 @@ function renderArtigo(a) {
   // Imagem de capa — usa imagemUrl (campo calculado) ou imagemCapa
   let imgSrc = a.imagemUrl || a.imagemCapa;
   if (imgSrc && imgSrc.startsWith('/')) {
-    imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+    imgSrc = new URL(API_BASE).origin + imgSrc;
   }
   if (imgSrc) {
     const capaEl = document.createElement('img');
@@ -140,7 +140,7 @@ async function carregarSidebar(categoriaAtual) {
       ? relacionados.map(a => {
           let imgSrc = a.imagemUrl || a.imagemCapa;
           if (imgSrc && imgSrc.startsWith('/')) {
-            imgSrc = 'https://appacademia-production-be7e.up.railway.app' + imgSrc;
+            imgSrc = new URL(API_BASE).origin + imgSrc;
           }
           const imgContent = imgSrc
             ? `<img src="${imgSrc}" alt="${a.titulo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
